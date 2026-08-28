@@ -20,6 +20,12 @@ patient and healthcare-professional dashboards.
 > and is not intended to provide medical diagnosis or replace professional
 > clinical judgment.
 
+## Research & Literature Review
+
+The research papers reviewed for this project are documented in:
+
+[View Literature Review References](docs/literature-review/references.md)
+
 ## Physiological Parameters
 
 The proposed system monitors:
