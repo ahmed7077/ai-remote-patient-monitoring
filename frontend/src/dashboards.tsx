@@ -6,7 +6,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 
 import { api } from './api'
 import { EmptyState, ErrorState, Loading, StatusBadge } from './components'
-import type { Alert, Device, Patient, Session, User, Vital } from './types'
+import type { Alert, DemoScenario, Device, Patient, Session, User, Vital } from './types'
 
 const vitalMeta = {
   HEART_RATE: { label: 'Heart rate', icon: HeartPulse },
@@ -77,6 +77,22 @@ function DeviceList({ devices }: { devices: Device[] }) {
   return <div className="device-list">{devices.map(device => <article className="device-row" key={device.id}>{device.device_type === 'SIMULATOR' && <span className="sim-label">SIMULATED DEVICE</span>}<strong>{device.device_uid}</strong><p>{device.device_type} · {device.status}</p><small>{device.last_seen_at ? `Last seen ${time(device.last_seen_at)}` : 'No measurements received'}{device.firmware_version ? ` · Firmware ${device.firmware_version}` : ''}</small></article>)}</div>
 }
 
+function DemoControls({ patientId }: { patientId: string }) {
+  const client = useQueryClient()
+  const simulation = useMutation({
+    mutationFn: (scenario: DemoScenario) => api.simulate(patientId, scenario),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['sessions', patientId] }),
+        client.invalidateQueries({ queryKey: ['risks', patientId] }),
+        client.invalidateQueries({ queryKey: ['alerts', patientId] }),
+        client.invalidateQueries({ queryKey: ['devices', patientId] }),
+      ])
+    },
+  })
+  return <section className="panel demo-panel"><div><span className="eyebrow">REVIEWER DEMO</span><h2>Generate simulated reading</h2><p>Create one clearly labelled synthetic session using the existing quality, risk, and alert pipeline.</p></div><div className="demo-actions"><button disabled={simulation.isPending} onClick={() => simulation.mutate('normal')}>Normal</button><button disabled={simulation.isPending} onClick={() => simulation.mutate('warning')}>Warning</button><button className="danger" disabled={simulation.isPending} onClick={() => simulation.mutate('high-risk')}>High risk</button></div>{simulation.isPending && <small role="status">Generating synthetic reading…</small>}{simulation.isSuccess && <small className="success" role="status">Synthetic reading generated. The monitoring view has been refreshed.</small>}{simulation.isError && <div className="form-error" role="alert">{simulation.error.message}</div>}</section>
+}
+
 function PatientDetail({ patient, professional = false }: { patient: Patient; professional?: boolean }) {
   const data = usePatientData(patient.id)
   if (data.queries.some(query => query.isLoading)) return <Loading />
@@ -84,7 +100,7 @@ function PatientDetail({ patient, professional = false }: { patient: Patient; pr
   if (failed) return <ErrorState message={failed.error?.message ?? 'Unable to load patient information.'} />
   const sessions = data.sessions.data ?? []
   const risk = data.risks.data?.[0]
-  return <><PageHeading eyebrow={professional ? patient.patient_code : 'YOUR MONITORING OVERVIEW'} title={professional ? patient.display_name : `Monitoring overview for ${patient.display_name}`} body={sessions[0] ? `Latest synthetic synchronization ${time(sessions[0].recorded_at)}` : 'This workspace is ready when the first simulated reading arrives.'} /><VitalsGrid sessions={sessions} /><section className="two-col"><div className="panel"><div className="section-title"><div><span className="eyebrow">DECISION SUPPORT</span><h2>Prototype Risk Assessment</h2></div>{risk && <StatusBadge level={risk.risk_level} />}</div>{risk ? <div className="risk-copy"><p>{risk.explanation}</p><small>Assessed {time(risk.created_at)} using temporary rule-based thresholds. This is not a diagnosis or clinically validated prediction.</small></div> : <EmptyState title="No assessment available" body="A prototype assessment will appear after valid simulated measurements are received." />}</div><div className="panel"><div className="section-title"><div><span className="eyebrow">CONNECTED SOURCE</span><h2>Monitoring device</h2></div></div><DeviceList devices={data.devices.data ?? []} /></div></section><section className="panel"><div className="section-title"><div><span className="eyebrow">ATTENTION QUEUE</span><h2>Recent alerts</h2></div></div><AlertsList patientId={patient.id} alerts={data.alerts.data ?? []} professional={professional} /></section></>
+  return <><PageHeading eyebrow={professional ? patient.patient_code : 'YOUR MONITORING OVERVIEW'} title={professional ? patient.display_name : `Monitoring overview for ${patient.display_name}`} body={sessions[0] ? `Latest synthetic synchronization ${time(sessions[0].recorded_at)}` : 'This workspace is ready when the first simulated reading arrives.'} />{professional && <DemoControls patientId={patient.id} />}<VitalsGrid sessions={sessions} /><section className="two-col"><div className="panel"><div className="section-title"><div><span className="eyebrow">DECISION SUPPORT</span><h2>Prototype Risk Assessment</h2></div>{risk && <StatusBadge level={risk.risk_level} />}</div>{risk ? <div className="risk-copy"><p>{risk.explanation}</p><small>Assessed {time(risk.created_at)} using temporary rule-based thresholds. This is not a diagnosis or clinically validated prediction.</small></div> : <EmptyState title="No assessment available" body="A prototype assessment will appear after valid simulated measurements are received." />}</div><div className="panel"><div className="section-title"><div><span className="eyebrow">CONNECTED SOURCE</span><h2>Monitoring device</h2></div></div><DeviceList devices={data.devices.data ?? []} /></div></section><section className="panel"><div className="section-title"><div><span className="eyebrow">ATTENTION QUEUE</span><h2>Recent alerts</h2></div></div><AlertsList patientId={patient.id} alerts={data.alerts.data ?? []} professional={professional} /></section></>
 }
 
 export function PatientDashboard() {

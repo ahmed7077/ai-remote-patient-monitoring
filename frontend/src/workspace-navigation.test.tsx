@@ -78,9 +78,13 @@ describe('professional workspace', () => {
     vi.spyOn(api, 'risks').mockResolvedValue([])
     vi.spyOn(api, 'alerts').mockResolvedValue([])
     vi.spyOn(api, 'devices').mockResolvedValue([])
+    const simulate = vi.spyOn(api, 'simulate').mockResolvedValue({ id: 'session-id', patient_id: 'profile-id', device_id: 'device-id', recorded_at: '2026-01-01T00:00:00Z', received_at: '2026-01-01T00:00:00Z', source: 'SIMULATED', measurements: [] })
     renderAuthenticated('/doctor/patients/profile-id', 'HEALTHCARE_PROFESSIONAL', [patientProfile])
     expect(await screen.findByRole('heading', { name: 'Test Patient' })).toBeTruthy()
     expect(screen.getByText('No assessment available')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'High risk' }))
+    await waitFor(() => expect(simulate.mock.calls[0]?.slice(0, 2)).toEqual(['profile-id', 'high-risk']))
+    expect(await screen.findByText(/Synthetic reading generated/)).toBeTruthy()
   })
 
   it('keeps patient users out of professional routes', async () => {

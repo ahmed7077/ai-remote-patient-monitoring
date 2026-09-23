@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
@@ -93,6 +94,16 @@ class IngestionRequest(BaseModel):
     recorded_at: datetime
     source: str = "SIMULATED"
     measurements: list[MeasurementInput] = Field(min_length=1, max_length=10)
+
+
+class DemoScenario(StrEnum):
+    NORMAL = "normal"
+    WARNING = "warning"
+    HIGH_RISK = "high-risk"
+
+
+class DemoSimulationRequest(BaseModel):
+    scenario: DemoScenario
 
 
 class VitalResponse(ORMModel):

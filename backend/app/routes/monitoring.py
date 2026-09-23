@@ -23,6 +23,7 @@ from app.models import (
 from app.schemas import (
     AlertResponse,
     AssignmentRequest,
+    DemoSimulationRequest,
     DeviceCreate,
     DeviceResponse,
     IngestionRequest,
@@ -32,6 +33,7 @@ from app.schemas import (
     SessionResponse,
 )
 from app.security import current_user, require_role
+from app.services.demo import DemoSimulationService
 from app.services.ingestion import VitalIngestionService
 
 router = APIRouter(tags=["monitoring"])
@@ -159,6 +161,24 @@ def sessions(
     )
     db.commit()
     return result
+
+
+@router.post(
+    "/patients/{patient_id}/demo/simulate",
+    response_model=SessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def simulate_demo_session(
+    patient_id: uuid.UUID,
+    payload: DemoSimulationRequest,
+    user: User = Depends(require_role(Role.HEALTHCARE_PROFESSIONAL)),
+    db: Session = Depends(get_db),
+) -> MeasurementSession:
+    can_access_patient(db, user, patient_id)
+    session = DemoSimulationService().simulate(db, patient_id, payload.scenario)
+    record_audit(db, "GENERATE_DEMO_SESSION", "PATIENT", user.id, str(patient_id))
+    db.commit()
+    return session
 
 
 @router.get("/patients/{patient_id}/risks", response_model=list[RiskResponse])

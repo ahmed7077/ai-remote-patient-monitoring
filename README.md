@@ -108,10 +108,21 @@ npm run build
 
 ## Demo workflow
 
-1. Register healthcare-professional and patient accounts.
-2. Create a synthetic patient through `POST /api/v1/patients` and link the patient user ID.
-3. Register a `SIMULATOR` device through `POST /api/v1/devices`.
-4. Run the simulator intentionally:
+### Reviewer-friendly one-click workflow
+
+1. Sign in as a healthcare professional, open **Patients**, and create or open a patient profile.
+2. Open the patient record and use **Generate simulated reading**.
+3. Select **Normal**, **Warning**, or **High risk**. The application creates a clearly labelled
+   simulator device when needed, persists one synthetic session, and refreshes the monitoring view.
+
+The demo action is restricted to healthcare professionals assigned to the patient. It uses the same
+quality, prototype risk, alert, and audit services as normal ingestion, without exposing a device key
+in the browser.
+
+### Standalone simulator
+
+For continuous or scripted demonstrations, register a `SIMULATOR` device through
+`POST /api/v1/devices`, then run:
 
 ```bash
 python simulator/simulator.py --device-key YOUR_DEVICE_INGESTION_KEY --device-uid SIM-DEMO-001 --scenario normal

@@ -142,3 +142,36 @@ def test_patient_email_link_rejects_non_patient_and_duplicate_accounts(client: T
     assert first.status_code == 201
     assert duplicate.status_code == 409
     assert wrong_role.status_code == 422
+
+
+def test_professional_can_generate_review_demo_sessions(client: TestClient) -> None:
+    _, doctor_headers = auth(client, "HEALTHCARE_PROFESSIONAL", "demo-doctor@example.com")
+    patient_id = client.post(
+        "/api/v1/patients",
+        headers=doctor_headers,
+        json={"patient_code": "DEMO-001", "display_name": "Reviewer Demo"},
+    ).json()["id"]
+
+    normal = client.post(
+        f"/api/v1/patients/{patient_id}/demo/simulate",
+        headers=doctor_headers,
+        json={"scenario": "normal"},
+    )
+    high_risk = client.post(
+        f"/api/v1/patients/{patient_id}/demo/simulate",
+        headers=doctor_headers,
+        json={"scenario": "high-risk"},
+    )
+
+    assert normal.status_code == 201
+    assert normal.json()["source"] == "SIMULATED"
+    assert high_risk.status_code == 201
+    devices = client.get(
+        f"/api/v1/patients/{patient_id}/devices", headers=doctor_headers
+    ).json()
+    alerts = client.get(
+        f"/api/v1/patients/{patient_id}/alerts", headers=doctor_headers
+    ).json()
+    assert len(devices) == 1
+    assert devices[0]["device_type"] == "SIMULATOR"
+    assert alerts[0]["severity"] == "HIGH_RISK"
