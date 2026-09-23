@@ -38,15 +38,15 @@ export function Shell({ user, children }: { user: User; children: ReactNode }) {
   const auth = useAuth()
   const patient = user.role === 'PATIENT'
   const items = patient
-    ? [['Overview', '/patient/dashboard'], ['Vitals', '/patient/dashboard#vitals'], ['Alerts', '/patient/dashboard#alerts'], ['Devices', '/patient/dashboard#devices']]
-    : [['Overview', '/doctor/dashboard'], ['Patients', '/doctor/dashboard#patients'], ['Alerts', '/doctor/dashboard#alerts'], ['Devices', '/doctor/dashboard#devices']]
+    ? [['Overview', '/patient/dashboard'], ['Vitals', '/patient/vitals'], ['Alerts', '/patient/alerts'], ['Devices', '/patient/devices']]
+    : [['Overview', '/doctor/dashboard'], ['Patients', '/doctor/patients'], ['Alerts', '/doctor/alerts'], ['Devices', '/doctor/devices']]
 
   return <div className="shell">
     <button className="mobile-menu" onClick={() => setOpen(true)} aria-label="Open navigation"><Menu /></button>
     <aside className={open ? 'open' : ''}>
       <button className="close" onClick={() => setOpen(false)} aria-label="Close navigation"><X /></button>
       <Brand />
-      <nav>{items.map(([label, to]) => <NavLink key={label} to={to} onClick={() => setOpen(false)}><HeartPulse />{label}</NavLink>)}</nav>
+      <nav aria-label={patient ? 'Patient workspace' : 'Professional workspace'}>{items.map(([label, to]) => <NavLink key={label} to={to} end={label === 'Overview'} onClick={() => setOpen(false)}><HeartPulse />{label}</NavLink>)}</nav>
       <div className="profile"><span>{user.full_name.slice(0, 2).toUpperCase()}</span><div><strong>{user.full_name}</strong><small>{patient ? 'Patient account' : 'Healthcare professional'}</small></div></div>
       <button className="signout" onClick={() => { auth.logout(); navigate('/login', { replace: true }) }}><LogOut />Sign out</button>
     </aside>

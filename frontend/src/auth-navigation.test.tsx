@@ -66,7 +66,7 @@ describe('authentication navigation', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() => expect(screen.getByLabelText('current path').textContent).toBe('/patient/dashboard'))
-    expect(await screen.findByText('Welcome, Test')).toBeTruthy()
+    expect(await screen.findByText('No patient profile linked')).toBeTruthy()
   })
 
   it('keeps a failed login on the login page and displays the API error', async () => {
@@ -115,7 +115,7 @@ describe('authentication navigation', () => {
     expect(screen.getByLabelText('current path').textContent).toBe('/patient/dashboard')
     resolveUser(user('PATIENT'))
 
-    expect(await screen.findByText('Welcome, Test')).toBeTruthy()
+    expect(await screen.findByText('No patient profile linked')).toBeTruthy()
     expect(screen.getByLabelText('current path').textContent).toBe('/patient/dashboard')
     expect(me).toHaveBeenCalledTimes(1)
   })

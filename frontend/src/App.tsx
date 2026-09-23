@@ -1,11 +1,14 @@
 import { Activity, ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 
 import { dashboardFor, useAuth } from './auth'
 import { Brand, Loading, Shell } from './components'
-import { DoctorDashboard, PatientDashboard } from './dashboards'
-import type { Role, User } from './types'
+import {
+  DoctorAlerts, DoctorDashboard, DoctorDevices, DoctorPatientDetail, DoctorPatients,
+  PatientAlerts, PatientDashboard, PatientDevices, PatientVitals,
+} from './dashboards'
+import type { Role } from './types'
 
 function AuthPage({ register = false }: { register?: boolean }) {
   const navigate = useNavigate()
@@ -79,12 +82,12 @@ function PublicOnly({ children }: { children: ReactNode }) {
   return children
 }
 
-function Protected({ role, children }: { role: Role; children: (user: User) => ReactNode }) {
+function ProtectedLayout({ role }: { role: Role }) {
   const auth = useAuth()
   if (auth.status === 'loading') return <Loading />
   if (auth.status === 'unauthenticated' || !auth.user) return <Navigate to="/login" replace />
   if (auth.user.role !== role) return <Navigate to={dashboardFor(auth.user.role)} replace />
-  return <Shell user={auth.user}>{children(auth.user)}</Shell>
+  return <Shell user={auth.user}><Outlet context={auth.user} /></Shell>
 }
 
 function AuthenticatedHome() {
@@ -98,8 +101,19 @@ export default function App() {
   return <Routes>
     <Route path="/login" element={<PublicOnly><AuthPage /></PublicOnly>} />
     <Route path="/register" element={<PublicOnly><AuthPage register /></PublicOnly>} />
-    <Route path="/patient/dashboard" element={<Protected role="PATIENT">{(user) => <PatientDashboard user={user} />}</Protected>} />
-    <Route path="/doctor/dashboard" element={<Protected role="HEALTHCARE_PROFESSIONAL">{() => <DoctorDashboard />}</Protected>} />
+    <Route element={<ProtectedLayout role="PATIENT" />}>
+      <Route path="/patient/dashboard" element={<PatientDashboard />} />
+      <Route path="/patient/vitals" element={<PatientVitals />} />
+      <Route path="/patient/alerts" element={<PatientAlerts />} />
+      <Route path="/patient/devices" element={<PatientDevices />} />
+    </Route>
+    <Route element={<ProtectedLayout role="HEALTHCARE_PROFESSIONAL" />}>
+      <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+      <Route path="/doctor/patients" element={<DoctorPatients />} />
+      <Route path="/doctor/patients/:patientId" element={<DoctorPatientDetail />} />
+      <Route path="/doctor/alerts" element={<DoctorAlerts />} />
+      <Route path="/doctor/devices" element={<DoctorDevices />} />
+    </Route>
     <Route path="*" element={<AuthenticatedHome />} />
   </Routes>
 }
