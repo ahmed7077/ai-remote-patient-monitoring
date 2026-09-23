@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models import DeviceStatus, DeviceType, QualityStatus, RiskLevel, Role, VitalType
 
@@ -44,6 +44,13 @@ class PatientCreate(BaseModel):
     patient_code: str = Field(pattern=r"^[A-Z0-9-]{3,40}$")
     display_name: str = Field(min_length=2, max_length=120)
     linked_user_id: uuid.UUID | None = None
+    linked_user_email: EmailStr | None = None
+
+    @model_validator(mode="after")
+    def single_link_identifier(self) -> "PatientCreate":
+        if self.linked_user_id is not None and self.linked_user_email is not None:
+            raise ValueError("Provide either linked_user_id or linked_user_email, not both")
+        return self
 
 
 class PatientResponse(ORMModel):

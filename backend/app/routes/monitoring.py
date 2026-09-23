@@ -43,7 +43,17 @@ def create_patient(
     user: User = Depends(require_role(Role.HEALTHCARE_PROFESSIONAL)),
     db: Session = Depends(get_db),
 ) -> Patient:
-    patient = Patient(**payload.model_dump())
+    patient_data = payload.model_dump(exclude={"linked_user_email"})
+    if payload.linked_user_email is not None:
+        linked_user = db.scalar(
+            select(User).where(User.email == str(payload.linked_user_email).lower())
+        )
+        if linked_user is None or linked_user.role != Role.PATIENT or not linked_user.is_active:
+            raise HTTPException(status_code=422, detail="Active patient account not found")
+        if db.scalar(select(Patient).where(Patient.linked_user_id == linked_user.id)):
+            raise HTTPException(status_code=409, detail="Patient account is already linked")
+        patient_data["linked_user_id"] = linked_user.id
+    patient = Patient(**patient_data)
     db.add(patient)
     db.flush()
     db.add(ProfessionalPatientAssignment(professional_user_id=user.id, patient_id=patient.id))

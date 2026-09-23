@@ -83,3 +83,62 @@ def test_unassigned_professional_cannot_access_patient(client: TestClient) -> No
         client.get(f"/api/v1/patients/{patient_id}/sessions", headers=outsider_headers).status_code
         == 403
     )
+
+
+def test_professional_can_create_and_link_patient_by_account_email(client: TestClient) -> None:
+    _, doctor_headers = auth(client, "HEALTHCARE_PROFESSIONAL", "linking-doctor@example.com")
+    patient_user, patient_headers = auth(client, "PATIENT", "linked-patient@example.com")
+
+    created = client.post(
+        "/api/v1/patients",
+        headers=doctor_headers,
+        json={
+            "patient_code": "LINK-001",
+            "display_name": "Linked Patient",
+            "linked_user_email": "linked-patient@example.com",
+        },
+    )
+
+    assert created.status_code == 201
+    assert created.json()["linked_user_id"] == patient_user["id"]
+    doctor_patients = client.get("/api/v1/patients", headers=doctor_headers).json()
+    patient_patients = client.get("/api/v1/patients", headers=patient_headers).json()
+    assert doctor_patients[0]["id"] == created.json()["id"]
+    assert patient_patients[0]["id"] == created.json()["id"]
+
+
+def test_patient_email_link_rejects_non_patient_and_duplicate_accounts(client: TestClient) -> None:
+    _, doctor_headers = auth(client, "HEALTHCARE_PROFESSIONAL", "owner-doctor@example.com")
+    auth(client, "PATIENT", "one-patient@example.com")
+
+    first = client.post(
+        "/api/v1/patients",
+        headers=doctor_headers,
+        json={
+            "patient_code": "LINK-002",
+            "display_name": "First Link",
+            "linked_user_email": "one-patient@example.com",
+        },
+    )
+    duplicate = client.post(
+        "/api/v1/patients",
+        headers=doctor_headers,
+        json={
+            "patient_code": "LINK-003",
+            "display_name": "Duplicate Link",
+            "linked_user_email": "one-patient@example.com",
+        },
+    )
+    wrong_role = client.post(
+        "/api/v1/patients",
+        headers=doctor_headers,
+        json={
+            "patient_code": "LINK-004",
+            "display_name": "Wrong Role",
+            "linked_user_email": "owner-doctor@example.com",
+        },
+    )
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 409
+    assert wrong_role.status_code == 422
