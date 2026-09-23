@@ -74,7 +74,7 @@ function AlertsList({ patientId, alerts, professional = false }: { patientId: st
 
 function DeviceList({ devices }: { devices: Device[] }) {
   if (!devices.length) return <EmptyState title="No monitoring device linked" body="A device will appear here after a healthcare professional links it to this profile." />
-  return <div className="device-list">{devices.map(device => <article className="device-row" key={device.id}><div>{device.device_type === 'SIMULATOR' ? <SimulatedTag /> : <StatusBadge status={device.status} />}<StatusBadge status={device.status} /></div><strong>{device.device_uid}</strong><p>{device.device_type === 'SIMULATOR' ? 'Software simulator' : 'Physical device'} · {device.status.toLowerCase()}</p><small>{device.last_seen_at ? `Last seen ${time(device.last_seen_at)}` : 'No measurements received'}{device.firmware_version ? ` · Firmware ${device.firmware_version}` : ''}</small></article>)}</div>
+  return <div className="device-list">{devices.map(device => <article className="device-row" key={device.id}><div>{device.device_type === 'SIMULATOR' && <SimulatedTag />}<StatusBadge status={device.status} /></div><strong>{device.device_uid}</strong><p>{device.device_type === 'SIMULATOR' ? 'Software simulator' : 'Physical device'} · {device.status.toLowerCase()}</p><small>{device.last_seen_at ? `Last seen ${time(device.last_seen_at)}` : 'No measurements received'}{device.firmware_version ? ` · Firmware ${device.firmware_version}` : ''}</small></article>)}</div>
 }
 
 function DemoControls({ patientId }: { patientId: string }) {
