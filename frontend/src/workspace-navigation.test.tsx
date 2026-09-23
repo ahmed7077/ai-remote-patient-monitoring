@@ -32,6 +32,7 @@ describe('patient workspace navigation', () => {
   it.each([
     ['/patient/dashboard', 'No patient profile linked'],
     ['/patient/vitals', 'No measurements yet'],
+    ['/patient/trends', 'Trend unavailable'],
     ['/patient/alerts', 'No alerts'],
     ['/patient/devices', 'No monitoring device linked'],
   ])('renders the direct route %s with an intentional empty state', async (path, emptyState) => {
@@ -42,6 +43,7 @@ describe('patient workspace navigation', () => {
 
   it.each([
     ['Vitals', '/patient/vitals'],
+    ['Trends', '/patient/trends'],
     ['Alerts', '/patient/alerts'],
     ['Devices', '/patient/devices'],
   ])('navigates to %s and marks it active', async (label, path) => {

@@ -6,7 +6,7 @@ import { dashboardFor, useAuth } from './auth'
 import { Brand, Loading, Shell } from './components'
 import {
   DoctorAlerts, DoctorDashboard, DoctorDevices, DoctorPatientDetail, DoctorPatients,
-  PatientAlerts, PatientDashboard, PatientDevices, PatientVitals,
+  PatientAlerts, PatientDashboard, PatientDevices, PatientTrends, PatientVitals,
 } from './dashboards'
 import type { Role } from './types'
 
@@ -104,6 +104,7 @@ export default function App() {
     <Route element={<ProtectedLayout role="PATIENT" />}>
       <Route path="/patient/dashboard" element={<PatientDashboard />} />
       <Route path="/patient/vitals" element={<PatientVitals />} />
+      <Route path="/patient/trends" element={<PatientTrends />} />
       <Route path="/patient/alerts" element={<PatientAlerts />} />
       <Route path="/patient/devices" element={<PatientDevices />} />
     </Route>
