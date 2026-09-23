@@ -1,8 +1,8 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { Activity, AlertTriangle, HeartPulse, Stethoscope, Thermometer, Users } from 'lucide-react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Activity, AlertOctagon, AlertTriangle, CheckCircle2, HeartPulse, LoaderCircle, Stethoscope, Thermometer, Users } from 'lucide-react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { api } from './api'
 import { EmptyState, ErrorState, Loading, RiskDisclosureNote, SimulatedTag, SkeletonBlock, StatusBadge } from './components'
@@ -17,6 +17,18 @@ const vitalMeta = {
 
 function time(value: string) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReduced(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  return reduced
 }
 
 function PageHeading({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
@@ -48,7 +60,7 @@ function usePatientData(patientId: string) {
 }
 
 function VitalCard({ vital, diastolic, label, Icon, recordedAt, simulated }: { vital?: Vital; diastolic?: Vital; label: string; Icon: typeof Activity; recordedAt?: string; simulated?: boolean }) {
-  return <article className="vital"><div className="vital-top"><span className="vital-icon"><Icon /></span><StatusBadge status={vital?.quality_status ?? 'UNAVAILABLE'} /></div><p>{label}</p>{vital ? <><strong className="vital-value">{vital.value}{diastolic && ` / ${diastolic.value}`} <small>{vital.unit}</small></strong><div className="vital-meta"><span>{recordedAt ? `As of ${time(recordedAt)}` : 'Latest reading'}</span>{simulated && <SimulatedTag />}</div></> : <><strong className="vital-value">—</strong><div className="vital-meta"><span>No reading received</span></div></>}</article>
+  return <article className={`vital quality-${vital?.quality_status.toLowerCase() ?? 'unavailable'}`}><div className="vital-top"><span className="vital-icon"><Icon /></span><StatusBadge status={vital?.quality_status ?? 'UNAVAILABLE'} /></div><p>{label}</p>{vital ? <><strong className="vital-value">{vital.value}{diastolic && ` / ${diastolic.value}`} <small>{vital.unit}</small></strong><div className="vital-meta"><span>{recordedAt ? `As of ${time(recordedAt)}` : 'Latest reading'}</span>{simulated && <SimulatedTag />}</div></> : <><strong className="vital-value">—</strong><div className="vital-meta"><span>No reading received</span></div></>}</article>
 }
 
 function VitalsGrid({ sessions }: { sessions: Session[] }) {
@@ -58,11 +70,13 @@ function VitalsGrid({ sessions }: { sessions: Session[] }) {
 }
 
 function Trend({ sessions }: { sessions: Session[] }) {
+  const reducedMotion = useReducedMotion()
   const data = [...sessions].reverse().map(session => {
     const find = (type: Vital['vital_type']) => session.measurements.find(vital => vital.vital_type === type)?.value
     return { name: new Date(session.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), heart: find('HEART_RATE'), spo2: find('SPO2'), temperature: find('TEMPERATURE') }
   })
-  return <div className="chart" aria-label="Recent vital trend chart"><ResponsiveContainer width="100%" height={300}><LineChart data={data}><CartesianGrid stroke="#daddd8" vertical={false} /><XAxis dataKey="name" stroke="#66716e" tick={{fontSize:10}} /><YAxis stroke="#66716e" tick={{fontSize:10}} /><Tooltip contentStyle={{borderColor:'#bdc5c1',borderRadius:8,fontFamily:'JetBrains Mono'}} labelStyle={{color:'#66716e'}} /><Line isAnimationActive={false} type="monotone" dataKey="heart" name="Heart rate · bpm" stroke="#a33e3b" strokeWidth={2} /><Line isAnimationActive={false} type="monotone" dataKey="spo2" name="SpO₂ · %" stroke="#155f68" strokeWidth={2} /><Line isAnimationActive={false} type="monotone" dataKey="temperature" name="Temperature · °C" stroke="#555b8d" strokeWidth={2} /></LineChart></ResponsiveContainer><div className="chart-origin"><SimulatedTag />Synthetic persisted measurements</div></div>
+  const motion = { isAnimationActive: !reducedMotion, animationDuration: 850, animationEasing: 'ease-out' as const }
+  return <div className="chart" aria-label="Recent vital trend chart"><div className="chart-stage"><ResponsiveContainer width="100%" height={300}><AreaChart data={data} margin={{ top: 12, right: 12, bottom: 2, left: -12 }}><defs><linearGradient id="heartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a33e3b" stopOpacity={.18}/><stop offset="100%" stopColor="#a33e3b" stopOpacity={0}/></linearGradient><linearGradient id="spo2Fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#155f68" stopOpacity={.18}/><stop offset="100%" stopColor="#155f68" stopOpacity={0}/></linearGradient><linearGradient id="tempFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#555b8d" stopOpacity={.14}/><stop offset="100%" stopColor="#555b8d" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#daddd8" strokeDasharray="2 5" vertical={false} /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize:10, fill:'#66716e'}} dy={8} /><YAxis axisLine={false} tickLine={false} tick={{fontSize:10, fill:'#66716e'}} /><Tooltip cursor={{stroke:'#9aaba7', strokeDasharray:'3 4'}} contentStyle={{border:'1px solid #bdc5c1',borderRadius:10,fontFamily:'JetBrains Mono',boxShadow:'0 10px 30px rgba(29,46,42,.12)'}} labelStyle={{color:'#66716e',marginBottom:6}} /><Area {...motion} connectNulls type="monotone" dataKey="heart" name="Heart rate · bpm" stroke="#a33e3b" strokeWidth={2.4} fill="url(#heartFill)" dot={{r:2.5, fill:'#fff', strokeWidth:2}} activeDot={{r:5, strokeWidth:2, fill:'#fff'}} /><Area {...motion} connectNulls type="monotone" dataKey="spo2" name="SpO₂ · %" stroke="#155f68" strokeWidth={2.4} fill="url(#spo2Fill)" dot={{r:2.5, fill:'#fff', strokeWidth:2}} activeDot={{r:5, strokeWidth:2, fill:'#fff'}} /><Area {...motion} connectNulls type="monotone" dataKey="temperature" name="Temperature · °C" stroke="#555b8d" strokeWidth={2.4} fill="url(#tempFill)" dot={{r:2.5, fill:'#fff', strokeWidth:2}} activeDot={{r:5, strokeWidth:2, fill:'#fff'}} /></AreaChart></ResponsiveContainer></div><div className="chart-origin"><SimulatedTag />Synthetic persisted measurements</div></div>
 }
 
 function AlertsList({ patientId, alerts, professional = false }: { patientId: string; alerts: Alert[]; professional?: boolean }) {
@@ -90,7 +104,7 @@ function DemoControls({ patientId }: { patientId: string }) {
       ])
     },
   })
-  return <section className="panel demo-panel"><div><span className="eyebrow">REVIEWER DEMO</span><h2>Generate simulated reading</h2><p>Create one clearly labelled synthetic session using the existing quality, risk, and alert pipeline.</p></div><div className="demo-actions"><button disabled={simulation.isPending} onClick={() => simulation.mutate('normal')}>Normal</button><button disabled={simulation.isPending} onClick={() => simulation.mutate('warning')}>Warning</button><button className="danger" disabled={simulation.isPending} onClick={() => simulation.mutate('high-risk')}>High risk</button></div>{simulation.isPending && <small role="status">Generating synthetic reading…</small>}{simulation.isSuccess && <small className="success" role="status">Synthetic reading generated. The monitoring view has been refreshed.</small>}{simulation.isError && <div className="form-error" role="alert">{simulation.error.message}</div>}</section>
+  return <section className="panel demo-panel"><div><span className="eyebrow">REVIEWER DEMO</span><h2>Generate simulated reading</h2><p>Create one clearly labelled synthetic session using the existing quality, risk, and alert pipeline.</p></div><div className="demo-actions"><button aria-label="Normal" disabled={simulation.isPending} onClick={() => simulation.mutate('normal')}><CheckCircle2 /><span><strong>Normal</strong><small>Stable range</small></span></button><button aria-label="Warning" disabled={simulation.isPending} onClick={() => simulation.mutate('warning')}><AlertTriangle /><span><strong>Warning</strong><small>Needs review</small></span></button><button aria-label="High risk" className="danger" disabled={simulation.isPending} onClick={() => simulation.mutate('high-risk')}><AlertOctagon /><span><strong>High risk</strong><small>Urgent signal</small></span></button></div>{simulation.isPending && <small className="progress-note" role="status"><LoaderCircle />Generating synthetic reading…</small>}{simulation.isSuccess && <small className="success" role="status">Synthetic reading generated. The monitoring view has been refreshed.</small>}{simulation.isError && <div className="form-error" role="alert">{simulation.error.message}</div>}</section>
 }
 
 function PatientDetail({ patient, professional = false }: { patient: Patient; professional?: boolean }) {

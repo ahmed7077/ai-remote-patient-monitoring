@@ -112,10 +112,10 @@ export function Shell({ user, children }: { user: User; children: ReactNode }) {
       <button ref={closeRef} className="close" onClick={closeNavigation} aria-label="Close navigation"><X /></button>
       <Brand />
       <span className="nav-label">{patient ? 'My monitoring' : 'Clinical workspace'}</span>
-      <nav aria-label={patient ? 'Patient workspace' : 'Professional workspace'}>{items.map(({ label, to, Icon }) => <NavLink key={label} to={to} end={label === 'Overview'} onClick={() => setOpen(false)}><span className="active-rail" /><Icon aria-hidden="true" /><span>{label}</span></NavLink>)}</nav>
+      <nav aria-label={patient ? 'Patient workspace' : 'Professional workspace'}>{items.map(({ label, to, Icon }) => <NavLink key={label} to={to} end={label === 'Overview'} onClick={() => setOpen(false)}><span className="active-rail" /><span className="nav-icon"><Icon aria-hidden="true" /></span><span>{label}</span></NavLink>)}</nav>
       <div className="profile"><span>{user.full_name.slice(0, 2).toUpperCase()}</span><div><strong>{user.full_name}</strong><small><UserRound />{patient ? 'Patient' : 'Healthcare professional'}</small></div></div>
       <button className="signout" onClick={() => { auth.logout(); navigate('/login', { replace: true }) }}><LogOut />Sign out</button>
     </aside>
-    <main><header className="topbar"><div><StatusBadge status="PROTOTYPE" /><span>Secure monitoring workspace</span></div><div className="topbar-user"><span>{user.full_name}</span><small>{patient ? 'Patient' : 'Healthcare professional'}</small></div></header>{children}</main>
+    <main><header className="topbar"><div><StatusBadge status="PROTOTYPE" /><span className="workspace-state"><i aria-hidden="true" />Secure monitoring workspace</span></div><div className="topbar-user"><span>{user.full_name}</span><small>{patient ? 'Patient' : 'Healthcare professional'}</small></div></header>{children}</main>
   </div>
 }
