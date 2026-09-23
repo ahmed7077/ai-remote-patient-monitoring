@@ -6,7 +6,6 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './auth'
 import './styles.css'
-import './workspace.css'
 
 const client = new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, retry: 1 } } })
 
