@@ -116,6 +116,6 @@ export function Shell({ user, children }: { user: User; children: ReactNode }) {
       <div className="profile"><span>{user.full_name.slice(0, 2).toUpperCase()}</span><div><strong>{user.full_name}</strong><small><UserRound />{patient ? 'Patient' : 'Healthcare professional'}</small></div></div>
       <button className="signout" onClick={() => { auth.logout(); navigate('/login', { replace: true }) }}><LogOut />Sign out</button>
     </aside>
-    <main><header className="topbar"><div><StatusBadge status="PROTOTYPE" /><span className="workspace-state"><i aria-hidden="true" />Secure monitoring workspace</span></div><div className="topbar-user"><span>{user.full_name}</span><small>{patient ? 'Patient' : 'Healthcare professional'}</small></div></header>{children}</main>
+    <main><header className="topbar"><div><span className="workspace-state"><i aria-hidden="true" />Monitoring workspace</span></div><div className="topbar-user"><span>{user.full_name}</span><small>{patient ? 'Patient' : 'Healthcare professional'}</small></div></header>{children}</main>
   </div>
 }
