@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routes.auth import router as auth_router
+from app.routes.monitoring import router as monitoring_router
 
 settings = get_settings()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth_router, prefix=settings.api_prefix)
+app.include_router(monitoring_router, prefix=settings.api_prefix)
 
 
 @app.exception_handler(Exception)

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(
         default="development-only-secret-change-before-deployment", min_length=32
     )
+    device_ingestion_key: str = "development-device-ingestion-key"
     access_token_minutes: int = 15
     refresh_token_days: int = 7
     frontend_origin: str = "http://localhost:5173"
