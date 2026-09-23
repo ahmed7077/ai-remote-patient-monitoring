@@ -1,5 +1,6 @@
 export type Role='PATIENT'|'HEALTHCARE_PROFESSIONAL'; export type RiskLevel='NORMAL'|'WARNING'|'HIGH_RISK';
 export interface User{id:string;full_name:string;email:string;role:Role;is_active:boolean}
+export interface TokenResponse{access_token:string;refresh_token:string;token_type:'bearer'}
 export interface Patient{id:string;patient_code:string;display_name:string;linked_user_id:string|null;created_at:string}
 export interface Device{id:string;device_uid:string;patient_id:string;device_type:'SIMULATOR'|'ESP32';status:'ONLINE'|'OFFLINE'|'STALE';last_seen_at:string|null;firmware_version:string|null}
 export interface Vital{vital_type:'HEART_RATE'|'SPO2'|'SYSTOLIC_BP'|'DIASTOLIC_BP'|'TEMPERATURE';value:number;unit:string;quality_status:'VALID'|'SUSPECT'|'INVALID'}
