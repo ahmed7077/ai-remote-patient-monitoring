@@ -1,121 +1,133 @@
-# AI-Powered Remote Patient Monitoring
+# PulseBridge — AI-Powered Remote Patient Monitoring
 
-An AI-powered Remote Patient Monitoring (RPM) platform that combines
-IoT-based physiological sensing, machine learning, predictive healthcare
-analytics, and secure data management for continuous patient monitoring.
+PulseBridge is a software-first academic Remote Patient Monitoring prototype. It collects explicitly synthetic vital measurements through a device-agnostic REST pipeline, performs technical data-quality checks, persists history, runs a clearly labelled prototype rule-based risk assessment, and presents role-scoped patient and healthcare-professional experiences.
 
-## Overview
+> This is not a medical device, diagnosis system, or clinically validated risk model. Simulator output is synthetic and must never be used to train, validate, or report the performance of the final ML model.
 
-Traditional healthcare monitoring often relies on periodic clinical visits
-and manual measurements, which may not provide continuous visibility into a
-patient's physiological condition.
+## Phase status
 
-This project proposes an intelligent Remote Patient Monitoring platform
-capable of continuously collecting multiple physiological parameters,
-analyzing real-time and historical trends, identifying abnormal patterns,
-performing ML-based risk assessment, and providing timely alerts through
-patient and healthcare-professional dashboards.
+**PHASE 1 — SOFTWARE PROTOTYPE (approximately 50%)**
 
-> This project is intended as a monitoring and decision-support prototype
-> and is not intended to provide medical diagnosis or replace professional
-> clinical judgment.
+Implemented:
 
-## Research & Literature Review
+- Full-stack FastAPI and React foundation
+- PostgreSQL persistence and Alembic migration
+- Argon2id authentication, JWT access tokens, rotating refresh tokens, and RBAC
+- Separate User, Patient, professional assignment, Device, Session, Measurement, Risk, Alert, and Audit concepts
+- Assigned-patient authorization boundaries
+- Simulator registration and authenticated, device-agnostic REST ingestion
+- Technical quality states: `VALID`, `SUSPECT`, `INVALID`
+- Historical measurements and genuine empty states
+- Replaceable `PrototypeRuleBasedRiskAssessmentService`
+- Internal alert generation and professional acknowledgement
+- Security audit events for material actions
+- Responsive patient and professional interfaces using real API data
+- Docker Compose environment, free GitHub Actions CI, and ML research scaffold
 
-The research papers reviewed for this project are documented in:
+Remaining for Phase 2:
 
-[View Literature Review References](docs/literature-review/references.md)
+- Physical ESP32, MAX30102, temperature, and blood-pressure integration
+- Firmware, stronger per-device credentials, and optional MQTT evaluation
+- Real physiological dataset and research target/window/labels
+- Logistic Regression, SVM, Random Forest, and XGBoost experiments
+- Comparison, error analysis, tuning, SHAP, and final ML integration
+- Advanced hardening, performance testing, deployment, and physical validation
 
-## Physiological Parameters
+## Architecture
 
-The proposed system monitors:
+```text
+Intentional synthetic simulator
+        → authenticated REST adapter
+        → VitalIngestionService
+        → technical quality checks
+        → PostgreSQL history
+             ├─ prototype risk assessment → alerts
+             └─ historical measurements
+        → FastAPI /api/v1
+        → patient and professional React experiences
+```
 
-- Heart Rate
-- SpO₂
-- Blood Pressure
-- Body Temperature
+The ingestion service is transport-independent so a future ESP32 REST client or MQTT adapter can reuse its validation and persistence logic.
 
-## Key Features
+## Stack and structure
 
-- Real-time vital-sign monitoring
-- IoT-based physiological data acquisition
-- Historical health trend visualization
-- Data preprocessing and feature engineering
-- Machine-learning-based anomaly detection
-- Predictive risk assessment
-- Normal / Warning / High Risk classification
-- Automated alerts
-- Patient dashboard
-- Healthcare-professional dashboard
-- Authentication and Role-Based Access Control (RBAC)
-- Secure API communication
+- React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, Tailwind CSS
+- Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, psycopg 3
+- PostgreSQL 16, Docker Compose, pytest, Ruff, mypy, ESLint, Vitest, GitHub Actions
+- Entirely local, free, and open-source; no paid API or hosted service is required
 
-## Proposed Architecture
+```text
+backend/       API, models, services, migrations, tests
+frontend/      responsive React product interface
+simulator/     opt-in synthetic device process
+ml/            Phase 2 research scaffold and guardrails
+docs/          architecture, planning, literature review
+.github/       free CI workflow
+compose.yaml   frontend, backend, PostgreSQL
+```
 
-          Patient  
-              ↓  
-        IoT Sensors  
-              ↓  
-      ESP32 / IoT Gateway  
-              ↓  
-      Secure REST API  
-              ↓  
-      Backend & Database  
-              ↓  
-    Data Preprocessing & Feature Engineering  
-              ↓  
-        AI / ML Engine  
-              ↓  
-        Risk Assessment  
-              ↓  
-      Dashboard & Alerts  
-              ↓  
-    Patient / Healthcare Professional
+## Docker setup
 
-## Proposed Hardware
+Prerequisites: Docker Desktop with Compose. Copy `.env.example` to `.env` and replace every development secret.
 
-- ESP32 Development Board
-- MAX30102 Heart Rate & SpO₂ Sensor
-- Temperature Sensor
-- Blood Pressure Monitoring Device
-- Wi-Fi connectivity
-- Development computer/server
+```bash
+docker compose up --build
+```
 
-## Proposed Software
+The backend applies `alembic upgrade head` on startup. Open the frontend at `http://localhost:5173`, API documentation at `http://localhost:8000/docs`, and health endpoint at `http://localhost:8000/health`.
 
-- Python
-- Scikit-learn
-- XGBoost
-- FastAPI / Flask
-- MySQL / PostgreSQL
-- Arduino IDE
-- HTML, CSS and JavaScript / React
-- REST APIs
-- Git & GitHub
+Docker was unavailable on the implementation machine, so the configuration is supplied but the composed runtime still needs verification on a Docker-enabled host.
 
-## Machine Learning
+## Native development and checks
 
-Candidate machine-learning models will be experimentally compared for
-physiological risk assessment.
+```bash
+python -m venv .venv
+.venv/Scripts/pip install -e "backend[dev]"
+cd backend
+alembic upgrade head
+uvicorn app.main:app --reload
+```
 
-Planned models include:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-- Logistic Regression
-- Support Vector Machine (SVM)
-- Random Forest
-- XGBoost
+```bash
+ruff check backend simulator
+ruff format --check backend simulator
+mypy backend/app
+pytest backend simulator -q
+cd frontend
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
-Evaluation metrics will include:
+## Demo workflow
 
-- Accuracy
-- Precision
-- Recall
-- F1-Score
-- ROC-AUC
+1. Register healthcare-professional and patient accounts.
+2. Create a synthetic patient through `POST /api/v1/patients` and link the patient user ID.
+3. Register a `SIMULATOR` device through `POST /api/v1/devices`.
+4. Run the simulator intentionally:
 
-Experimental results will be added after model development and evaluation.
+```bash
+python simulator/simulator.py --device-key YOUR_DEVICE_INGESTION_KEY --device-uid SIM-DEMO-001 --scenario normal
+```
 
-## Team
+Use `--scenario warning`, `--scenario high-risk`, or `--once` for controlled demonstrations. Stop with Ctrl+C. The simulator always labels data `SIMULATED`; it does not start automatically or fabricate dashboard history.
+
+## Security, quality, and risk
+
+Passwords use Argon2id. Access tokens are short lived; opaque refresh tokens are hashed at rest and rotated. Patients see only their linked record. Professionals see only explicitly assigned patients. The development ingestion key protects the simulator endpoint; stronger per-device credentials remain Phase 2 work. Secrets belong in `.env`, ignored by Git.
+
+Audit events cover registration, login/logout, patient creation/assignment, device registration, viewing vitals, and alert acknowledgement. Passwords, tokens, and vital payloads are not stored in audit metadata.
+
+`DataQualityService` checks expected units, broad structural ranges, stale timestamps, and duplicate sessions. These are software checks—not clinical validation. The temporary risk service centralizes demonstration thresholds and stores `assessment_method=PROTOTYPE_RULE_BASED`. The interface does not describe it as AI diagnosis or clinical prediction.
+
+## Team and limitations
 
 | Name | USN |
 |---|---|
@@ -123,19 +135,6 @@ Experimental results will be added after model development and evaluation.
 | Ansit Pradhan | 20232ISE0058 |
 | Muhammad Ahmed | 20231ISE0061 |
 
-## Project Status
+Literature sources remain in [docs/literature-review/references.md](docs/literature-review/references.md).
 
-Development in Progress
-
-Current phase:
-- Literature review
-- Requirements analysis
-- System architecture design
-- Dataset and ML methodology planning
-
-## Disclaimer
-
-This project is an academic prototype developed for remote patient
-monitoring and predictive healthcare analytics. It is not a certified
-medical device and should not be used for medical diagnosis or clinical
-decision-making without appropriate professional validation.
+This phase has no physical sensors, real patient records, final ML dataset/model, clinical validation, certification, external notifications, deployment, or real-world healthcare usage. Use only synthetic identities and measurements.
