@@ -21,31 +21,27 @@ def generate(scenario: str, device_uid: str) -> dict[str, object]:
         "normal": {
             "HEART_RATE": (66, 82),
             "SPO2": (96, 100),
-            "SYSTOLIC_BP": (108, 128),
-            "DIASTOLIC_BP": (68, 84),
-            "TEMPERATURE": (36.3, 37.2),
+            "TEMPERATURE": (35.2, 36.4),
+            "RESPIRATORY_RATE": (12, 18),
         },
         "warning": {
             "HEART_RATE": (108, 118),
             "SPO2": (91, 94),
-            "SYSTOLIC_BP": (140, 158),
-            "DIASTOLIC_BP": (86, 98),
-            "TEMPERATURE": (37.8, 38.4),
+            "TEMPERATURE": (37.7, 38.3),
+            "RESPIRATORY_RATE": (25, 28),
         },
         "high-risk": {
             "HEART_RATE": (136, 152),
             "SPO2": (84, 88),
-            "SYSTOLIC_BP": (182, 198),
-            "DIASTOLIC_BP": (100, 112),
             "TEMPERATURE": (39.1, 40.2),
+            "RESPIRATORY_RATE": (34, 40),
         },
     }
     units = {
         "HEART_RATE": "bpm",
         "SPO2": "%",
-        "SYSTOLIC_BP": "mmHg",
-        "DIASTOLIC_BP": "mmHg",
         "TEMPERATURE": "°C",
+        "RESPIRATORY_RATE": "breaths/min",
     }
     return {
         "device_uid": device_uid,

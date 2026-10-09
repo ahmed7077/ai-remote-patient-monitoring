@@ -165,6 +165,12 @@ def test_professional_can_generate_review_demo_sessions(client: TestClient) -> N
 
     assert normal.status_code == 201
     assert normal.json()["source"] == "SIMULATED"
+    assert {item["vital_type"] for item in normal.json()["measurements"]} == {
+        "HEART_RATE",
+        "SPO2",
+        "TEMPERATURE",
+        "RESPIRATORY_RATE",
+    }
     assert high_risk.status_code == 201
     devices = client.get(f"/api/v1/patients/{patient_id}/devices", headers=doctor_headers).json()
     alerts = client.get(f"/api/v1/patients/{patient_id}/alerts", headers=doctor_headers).json()

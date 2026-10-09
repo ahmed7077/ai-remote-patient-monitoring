@@ -13,32 +13,28 @@ SCENARIO_RANGES: dict[DemoScenario, dict[VitalType, tuple[float, float]]] = {
     DemoScenario.NORMAL: {
         VitalType.HEART_RATE: (66, 82),
         VitalType.SPO2: (96, 100),
-        VitalType.SYSTOLIC_BP: (108, 128),
-        VitalType.DIASTOLIC_BP: (68, 84),
-        VitalType.TEMPERATURE: (36.3, 37.2),
+        VitalType.TEMPERATURE: (35.2, 36.4),
+        VitalType.RESPIRATORY_RATE: (12, 18),
     },
     DemoScenario.WARNING: {
         VitalType.HEART_RATE: (108, 118),
         VitalType.SPO2: (91, 94),
-        VitalType.SYSTOLIC_BP: (140, 158),
-        VitalType.DIASTOLIC_BP: (86, 98),
-        VitalType.TEMPERATURE: (37.8, 38.4),
+        VitalType.TEMPERATURE: (37.7, 38.3),
+        VitalType.RESPIRATORY_RATE: (25, 28),
     },
     DemoScenario.HIGH_RISK: {
         VitalType.HEART_RATE: (136, 152),
         VitalType.SPO2: (84, 88),
-        VitalType.SYSTOLIC_BP: (182, 198),
-        VitalType.DIASTOLIC_BP: (100, 112),
         VitalType.TEMPERATURE: (39.1, 40.2),
+        VitalType.RESPIRATORY_RATE: (34, 40),
     },
 }
 
 UNITS: dict[VitalType, str] = {
     VitalType.HEART_RATE: "bpm",
     VitalType.SPO2: "%",
-    VitalType.SYSTOLIC_BP: "mmHg",
-    VitalType.DIASTOLIC_BP: "mmHg",
     VitalType.TEMPERATURE: "°C",
+    VitalType.RESPIRATORY_RATE: "breaths/min",
 }
 
 
