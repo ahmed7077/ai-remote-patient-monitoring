@@ -8,6 +8,7 @@ EXPECTED_UNITS = {
     VitalType.SYSTOLIC_BP: "mmHg",
     VitalType.DIASTOLIC_BP: "mmHg",
     VitalType.TEMPERATURE: "°C",
+    VitalType.RESPIRATORY_RATE: "breaths/min",
 }
 STRUCTURAL_RANGES = {
     VitalType.HEART_RATE: (20, 260),
@@ -15,6 +16,7 @@ STRUCTURAL_RANGES = {
     VitalType.SYSTOLIC_BP: (40, 300),
     VitalType.DIASTOLIC_BP: (20, 200),
     VitalType.TEMPERATURE: (25, 45),
+    VitalType.RESPIRATORY_RATE: (2, 80),
 }
 SUSPECT_RANGES = {
     VitalType.HEART_RATE: (35, 220),
@@ -22,6 +24,7 @@ SUSPECT_RANGES = {
     VitalType.SYSTOLIC_BP: (70, 250),
     VitalType.DIASTOLIC_BP: (40, 150),
     VitalType.TEMPERATURE: (32, 43),
+    VitalType.RESPIRATORY_RATE: (4, 60),
 }
 
 

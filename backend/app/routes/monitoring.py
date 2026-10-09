@@ -1,4 +1,3 @@
-import secrets
 import uuid
 from datetime import UTC, datetime
 
@@ -8,9 +7,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.access import can_access_patient
 from app.audit import record_audit
-from app.config import get_settings
 from app.database import get_db
-from app.device_security import issue_device_credential, revoke_device_credentials
+from app.device_security import (
+    authenticate_ingestion_device,
+    issue_device_credential,
+    revoke_device_credentials,
+)
 from app.models import (
     Alert,
     Device,
@@ -183,12 +185,14 @@ def patient_devices(
 @router.post("/ingestion/vitals", response_model=SessionResponse, status_code=201)
 def ingest_vitals(
     payload: IngestionRequest,
-    x_device_key: str = Header(),
+    x_device_key: str | None = Header(default=None),
+    x_device_credential: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> MeasurementSession:
-    if not secrets.compare_digest(x_device_key, get_settings().device_ingestion_key):
-        raise HTTPException(status_code=401, detail="Invalid device ingestion key")
-    return VitalIngestionService().ingest(db, payload)
+    device, source = authenticate_ingestion_device(
+        db, payload.device_uid, x_device_credential, x_device_key
+    )
+    return VitalIngestionService().ingest(db, payload, device, source)
 
 
 @router.get("/patients/{patient_id}/sessions", response_model=list[SessionResponse])

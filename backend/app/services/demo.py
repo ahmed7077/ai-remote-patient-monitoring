@@ -74,4 +74,6 @@ class DemoSimulationService:
                 source=MeasurementSource.SIMULATED,
                 measurements=measurements,
             ),
+            device,
+            MeasurementSource.SIMULATED,
         )

@@ -51,7 +51,7 @@ def test_authorized_monitoring_pipeline_and_alert_acknowledgement(client: TestCl
             {"type": "TEMPERATURE", "value": 39.0, "unit": "°C"},
         ],
     }
-    assert client.post("/api/v1/ingestion/vitals", json=payload).status_code == 422
+    assert client.post("/api/v1/ingestion/vitals", json=payload).status_code == 401
     ingestion = client.post(
         "/api/v1/ingestion/vitals",
         headers={"X-Device-Key": "development-device-ingestion-key"},

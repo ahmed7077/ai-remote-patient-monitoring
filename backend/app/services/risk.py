@@ -7,6 +7,7 @@ from app.models import QualityStatus, RiskLevel, VitalType
 class RiskResult:
     level: RiskLevel
     explanation: str
+    actionable: bool = True
 
 
 class PrototypeRuleBasedRiskAssessmentService:
@@ -21,8 +22,9 @@ class PrototypeRuleBasedRiskAssessmentService:
         checks = {
             VitalType.HEART_RATE: (45, 130, 55, 105),
             VitalType.SPO2: (89, 101, 94, 101),
-            VitalType.SYSTOLIC_BP: (89, 180, 100, 139),
             VitalType.TEMPERATURE: (34.0, 40.0, 35.5, 38.0),
+            # Demonstration-only boundaries, not clinically validated thresholds.
+            VitalType.RESPIRATORY_RATE: (6, 32, 10, 24),
         }
         for vital, (high_low, high_upper, warn_low, warn_upper) in checks.items():
             if vital not in usable:
@@ -42,7 +44,9 @@ class PrototypeRuleBasedRiskAssessmentService:
             )
         if not usable:
             return RiskResult(
-                RiskLevel.WARNING, "No technically valid measurements were available."
+                RiskLevel.WARNING,
+                "Insufficient technically valid data for prototype assessment.",
+                actionable=False,
             )
         return RiskResult(
             RiskLevel.NORMAL, "Available measurements are within prototype thresholds."
