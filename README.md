@@ -1,144 +1,119 @@
-# PulseBridge — AI-Powered Remote Patient Monitoring
+# PulseBridge — Remote Patient Monitoring
 
-PulseBridge is a software-first academic Remote Patient Monitoring prototype. It collects explicitly synthetic vital measurements through a device-agnostic REST pipeline, performs technical data-quality checks, persists history, runs a clearly labelled prototype rule-based risk assessment, and presents role-scoped patient and healthcare-professional experiences.
+PulseBridge is an academic remote-patient-monitoring prototype with two explicitly identified data paths: a reviewer-friendly software simulator and an ESP32 finger-rest device. Both paths use the same authenticated ingestion, quality, persistence, prototype risk, alert, and role-based dashboard pipeline.
 
-> This is not a medical device, diagnosis system, or clinically validated risk model. Simulator output is synthetic and must never be used to train, validate, or report the performance of the final ML model.
+> PulseBridge is not a medical device, diagnostic system, or clinically validated model. It must not be used for clinical decisions or with real patient data.
 
-## Phase status
+## Current phase
 
-**PHASE 1 — SOFTWARE PROTOTYPE (approximately 50%)**
+The project now has a complete software demonstration path and a compile-verified physical-device prototype foundation:
 
-Implemented:
+- FastAPI, PostgreSQL, Alembic, React, and role-based patient/professional workspaces
+- Argon2id passwords, short-lived JWT access tokens, rotating hashed refresh tokens, RBAC, and audit events
+- Simulator and ESP32 sources identified separately throughout persisted sessions and the UI
+- Per-device ESP32 credentials stored only as hashes, with professional-only issue, rotate, and revoke operations
+- Idempotent physical sessions, quality/availability metadata, and offline/stale/online device state
+- Four active measurements: heart rate, estimated SpO₂, skin temperature, and experimental respiratory rate
+- One-click normal/warning/high-risk simulated reviewer scenarios with no tokens exposed in the browser
+- Trends with dates, a visible metric legend/selector, and separate axes for incompatible units
+- PlatformIO firmware for ESP32 + MAX30102 + DS18B20, including HTTPS upload and a PPG-derived respiratory-rate experiment
 
-- Full-stack FastAPI and React foundation
-- PostgreSQL persistence and Alembic migration
-- Argon2id authentication, JWT access tokens, rotating refresh tokens, and RBAC
-- Separate User, Patient, professional assignment, Device, Session, Measurement, Risk, Alert, and Audit concepts
-- Assigned-patient authorization boundaries
-- Simulator registration and authenticated, device-agnostic REST ingestion
-- Technical quality states: `VALID`, `SUSPECT`, `INVALID`
-- Historical measurements and genuine empty states
-- Replaceable `PrototypeRuleBasedRiskAssessmentService`
-- Internal alert generation and professional acknowledgement
-- Security audit events for material actions
-- Responsive patient and professional interfaces using real API data
-- Docker Compose environment, free GitHub Actions CI, and ML research scaffold
-
-Remaining for Phase 2:
-
-- Physical ESP32, MAX30102, temperature, and blood-pressure integration
-- Firmware, stronger per-device credentials, and optional MQTT evaluation
-- Real physiological dataset and research target/window/labels
-- Logistic Regression, SVM, Random Forest, and XGBoost experiments
-- Comparison, error analysis, tuning, SHAP, and final ML integration
-- Advanced hardening, performance testing, deployment, and physical validation
+Physical sensor accuracy, electrical assembly, on-device test execution, calibration, clinical validation, and the final ML work remain incomplete. See [phase status](docs/phase-status.md) for the exact boundary.
 
 ## Architecture
 
 ```text
-Intentional synthetic simulator
-        → authenticated REST adapter
-        → VitalIngestionService
-        → technical quality checks
-        → PostgreSQL history
-             ├─ prototype risk assessment → alerts
-             └─ historical measurements
-        → FastAPI /api/v1
-        → patient and professional React experiences
+Software simulator ── shared development key ─┐
+                                              ├─ HTTPS REST ingestion
+ESP32 finger-rest ── per-device credential ───┘
+        → server-derived source identity
+        → technical quality and duplicate checks
+        → PostgreSQL sessions + measurement availability/quality metadata
+             ├─ prototype rule-based assessment → internal alerts
+             └─ historical measurements and source-aware trends
+        → role-scoped FastAPI endpoints
+        → patient and healthcare-professional React workspaces
 ```
 
-The ingestion service is transport-independent so a future ESP32 REST client or MQTT adapter can reuse its validation and persistence logic.
+The backend never trusts a client-supplied source label. Physical devices authenticate with `X-Device-Credential`; the shared `X-Device-Key` is retained only for the controlled simulator path.
 
-## Stack and structure
-
-- React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, Tailwind CSS
-- Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, psycopg 3
-- PostgreSQL 16, Docker Compose, pytest, Ruff, mypy, ESLint, Vitest, GitHub Actions
-- Entirely local, free, and open-source; no paid API or hosted service is required
+## Repository
 
 ```text
-backend/       API, models, services, migrations, tests
-frontend/      responsive React product interface
-simulator/     opt-in synthetic device process
-ml/            Phase 2 research scaffold and guardrails
-docs/          architecture, planning, literature review
-.github/       free CI workflow
-compose.yaml   frontend, backend, PostgreSQL
+backend/       FastAPI API, domain model, services, migrations, and tests
+frontend/      React application and browser-level component tests
+firmware/      ESP32 finger-rest PlatformIO project
+simulator/     Opt-in synthetic data generator
+ml/            Research scaffold and guardrails; no final trained model
+docs/          Hardware, firmware, security, architecture, and phase notes
+.github/       Free CI workflow
+compose.yaml   PostgreSQL, backend, and frontend development stack
 ```
 
-## Docker setup
+## Run the web platform
 
-Prerequisites: Docker Desktop with Compose. Copy `.env.example` to `.env` and replace every development secret.
+Prerequisite: Docker Desktop with Compose. Copy `.env.example` to `.env` and replace every development secret, then run:
 
 ```bash
 docker compose up --build
 ```
 
-The backend applies `alembic upgrade head` on startup. Open the frontend at `http://localhost:5173`, API documentation at `http://localhost:8000/docs`, and health endpoint at `http://localhost:8000/health`.
+Open the frontend at `http://localhost:5173`, API documentation at `http://localhost:8000/docs`, and health endpoint at `http://localhost:8000/health`. The backend runs `alembic upgrade head` during container startup.
 
-Docker was unavailable on the implementation machine, so the configuration is supplied but the composed runtime still needs verification on a Docker-enabled host.
+Docker Desktop was unavailable on the implementation machine during final validation, so Compose configuration was parsed but the full container runtime still requires verification on a Docker-enabled host.
 
-## Native development and checks
+## Fast reviewer demo
+
+1. Register or sign in as a healthcare professional.
+2. Open **Patients**, create a patient profile, then open that patient.
+3. Under **Generate simulated reading**, choose **Normal**, **Warning**, or **High risk**.
+4. Show the four current readings, prototype assessment, and any alert.
+5. Generate a second reading and open **Trends**. Select each colored metric tab to show its dated graph and unit.
+6. Open **Devices** to show the source state and physical-device registration workflow.
+
+Every synthetic session is labelled `SIMULATED`. The one-click control uses the real server pipeline but is restricted to an assigned healthcare professional.
+
+For a physical demo, follow the [hardware guide](docs/hardware-guide.md) and [firmware guide](docs/firmware-guide.md). Registering an ESP32 reveals its credential once; copy it immediately into the device’s ignored local configuration.
+
+## Development checks
 
 ```bash
 python -m venv .venv
 .venv/Scripts/pip install -e "backend[dev]"
-cd backend
-alembic upgrade head
-uvicorn app.main:app --reload
-```
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-```bash
 ruff check backend simulator
 ruff format --check backend simulator
 mypy backend/app
 pytest backend simulator -q
+```
+
+```bash
 cd frontend
+npm ci
 npm run lint
 npm run typecheck
 npm test
 npm run build
 ```
 
-## Demo workflow
-
-### Reviewer-friendly one-click workflow
-
-1. Sign in as a healthcare professional, open **Patients**, and create or open a patient profile.
-2. Open the patient record and use **Generate simulated reading**.
-3. Select **Normal**, **Warning**, or **High risk**. The application creates a clearly labelled
-   simulator device when needed, persists one synthetic session, and refreshes the monitoring view.
-
-The demo action is restricted to healthcare professionals assigned to the patient. It uses the same
-quality, prototype risk, alert, and audit services as normal ingestion, without exposing a device key
-in the browser.
-
-### Standalone simulator
-
-For continuous or scripted demonstrations, register a `SIMULATOR` device through
-`POST /api/v1/devices`, then run:
-
 ```bash
-python simulator/simulator.py --device-key YOUR_DEVICE_INGESTION_KEY --device-uid SIM-DEMO-001 --scenario normal
+cd firmware/esp32-finger-rest
+platformio test -e native
+platformio run -e esp32dev
 ```
 
-Use `--scenario warning`, `--scenario high-risk`, or `--once` for controlled demonstrations. Stop with Ctrl+C. The simulator always labels data `SIMULATED`; it does not start automatically or fabricate dashboard history.
+The native firmware tests exercise only the transport-independent respiratory estimator. A connected ESP32 and sensors are still required for acquisition and end-to-end physical validation.
 
-## Security, quality, and risk
+## Security and data claims
 
-Passwords use Argon2id. Access tokens are short lived; opaque refresh tokens are hashed at rest and rotated. Patients see only their linked record. Professionals see only explicitly assigned patients. The development ingestion key protects the simulator endpoint; stronger per-device credentials remain Phase 2 work. Secrets belong in `.env`, ignored by Git.
+- Never commit `.env`, `pulsebridge_config.h`, Wi-Fi credentials, device credentials, JWT secrets, or certificates containing private keys.
+- Simulator output is synthetic and must not be used to train, validate, or report final ML performance.
+- Respiratory rate is an experimental estimate from PPG baseline modulation, not a validated clinical measurement.
+- Estimated SpO₂, heart rate, and skin temperature require hardware-specific calibration and comparison against reference equipment.
+- The current `PROTOTYPE_RULE_BASED` assessment is replaceable decision-support plumbing, not AI diagnosis.
 
-Audit events cover registration, login/logout, patient creation/assignment, device registration, viewing vitals, and alert acknowledgement. Passwords, tokens, and vital payloads are not stored in audit metadata.
+More detail: [API and security](docs/api-security.md), [architecture](docs/architecture/README.md), and [phase status](docs/phase-status.md).
 
-`DataQualityService` checks expected units, broad structural ranges, stale timestamps, and duplicate sessions. These are software checks—not clinical validation. The temporary risk service centralizes demonstration thresholds and stores `assessment_method=PROTOTYPE_RULE_BASED`. The interface does not describe it as AI diagnosis or clinical prediction.
-
-## Team and limitations
+## Team
 
 | Name | USN |
 |---|---|
@@ -146,6 +121,4 @@ Audit events cover registration, login/logout, patient creation/assignment, devi
 | Ansit Pradhan | 20232ISE0058 |
 | Muhammad Ahmed | 20231ISE0061 |
 
-Literature sources remain in [docs/literature-review/references.md](docs/literature-review/references.md).
-
-This phase has no physical sensors, real patient records, final ML dataset/model, clinical validation, certification, external notifications, deployment, or real-world healthcare usage. Use only synthetic identities and measurements.
+Literature sources are tracked in [docs/literature-review/references.md](docs/literature-review/references.md).
