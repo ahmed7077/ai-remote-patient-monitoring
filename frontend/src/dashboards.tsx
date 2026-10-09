@@ -1,18 +1,25 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Activity, AlertOctagon, AlertTriangle, CheckCircle2, HeartPulse, LoaderCircle, Stethoscope, Thermometer, Users } from 'lucide-react'
+import { Activity, AlertOctagon, AlertTriangle, CheckCircle2, Cpu, HeartPulse, KeyRound, LoaderCircle, Thermometer, Users, Wind } from 'lucide-react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { api } from './api'
 import { EmptyState, ErrorState, Loading, RiskDisclosureNote, SimulatedTag, SkeletonBlock, StatusBadge } from './components'
-import type { Alert, DemoScenario, Device, Patient, Session, User, Vital } from './types'
+import type { Alert, DemoScenario, Device, DeviceRegistration, Patient, Session, User, Vital } from './types'
 
 const vitalMeta = {
   HEART_RATE: { label: 'Heart rate', icon: HeartPulse },
-  SPO2: { label: 'Oxygen saturation', icon: Activity },
-  SYSTOLIC_BP: { label: 'Blood pressure', icon: Stethoscope },
-  TEMPERATURE: { label: 'Temperature', icon: Thermometer },
+  SPO2: { label: 'Estimated SpO₂', icon: Activity },
+  TEMPERATURE: { label: 'Skin temperature', icon: Thermometer },
+  RESPIRATORY_RATE: { label: 'Experimental respiratory rate', icon: Wind },
+} as const
+
+const trendMetrics = {
+  heart: { label: 'Heart rate', unit: 'bpm', color: '#a65343' },
+  spo2: { label: 'Estimated SpO₂', unit: '%', color: '#66724e' },
+  temperature: { label: 'Skin temperature', unit: '°C', color: '#b68143' },
+  respiratory: { label: 'Respiratory rate', unit: 'breaths/min', color: '#607683' },
 } as const
 
 function time(value: string) {
@@ -59,19 +66,21 @@ function usePatientData(patientId: string) {
   return { queries, sessions: queries[0], risks: queries[1], alerts: queries[2], devices: queries[3] }
 }
 
-function VitalCard({ vital, diastolic, label, Icon }: { vital?: Vital; diastolic?: Vital; label: string; Icon: typeof Activity }) {
+function VitalCard({ vital, label, Icon }: { vital?: Vital; label: string; Icon: typeof Activity }) {
   const quality = vital?.quality_status ?? 'UNAVAILABLE'
-  return <article className={`vital quality-${quality.toLowerCase()}`}><div className="vital-top"><span className="vital-icon"><Icon /></span><span className="quality-label"><i />{quality === 'VALID' ? 'In range' : quality.toLowerCase()}</span></div><p>{label}</p>{vital ? <strong className="vital-value">{vital.value}{diastolic && ` / ${diastolic.value}`} <small>{vital.unit}</small></strong> : <><strong className="vital-value">—</strong><div className="vital-meta"><span>No reading received</span></div></>}</article>
+  return <article className={`vital quality-${quality.toLowerCase()}`}><div className="vital-top"><span className="vital-icon"><Icon /></span><span className="quality-label"><i />{quality === 'VALID' ? 'Available' : quality.toLowerCase()}</span></div><p>{label}</p>{vital ? <strong className="vital-value">{vital.value} <small>{vital.unit}</small></strong> : <><strong className="vital-value">—</strong><div className="vital-meta"><span>Unavailable</span></div></>}</article>
 }
 
 function VitalsGrid({ sessions }: { sessions: Session[] }) {
   const latest = sessions[0]
   const latestMap = new Map(latest?.measurements.map(vital => [vital.vital_type, vital]))
-  return <section className="vital-grid" aria-label="Latest vital readings">{Object.entries(vitalMeta).map(([key, meta]) => <VitalCard key={key} vital={key === 'SYSTOLIC_BP' ? latestMap.get('SYSTOLIC_BP') : latestMap.get(key as Vital['vital_type'])} diastolic={key === 'SYSTOLIC_BP' ? latestMap.get('DIASTOLIC_BP') : undefined} label={meta.label} Icon={meta.icon} />)}</section>
+  return <section className="vital-grid" aria-label="Latest vital readings">{Object.entries(vitalMeta).map(([key, meta]) => <VitalCard key={key} vital={latestMap.get(key as Vital['vital_type'])} label={meta.label} Icon={meta.icon} />)}</section>
 }
 
 function Trend({ sessions }: { sessions: Session[] }) {
   const reducedMotion = useReducedMotion()
+  const [metric, setMetric] = useState<keyof typeof trendMetrics>('heart')
+  const selected = trendMetrics[metric]
   const data = [...sessions].reverse().map(session => {
     const find = (type: Vital['vital_type']) => session.measurements.find(vital => vital.vital_type === type)?.value
     return {
@@ -79,22 +88,25 @@ function Trend({ sessions }: { sessions: Session[] }) {
       heart: find('HEART_RATE'),
       spo2: find('SPO2'),
       temperature: find('TEMPERATURE'),
+      respiratory: find('RESPIRATORY_RATE'),
     }
   })
+  const sources = new Set(sessions.map(session => session.source))
+  const sourceLabel = sources.size > 1 ? 'Mixed simulated and ESP32 data' : sources.has('PHYSICAL_DEVICE') ? 'Physical ESP32 data' : 'Simulated data'
   const motion = { isAnimationActive: !reducedMotion, animationDuration: 850, animationEasing: 'ease-out' as const }
-  return <div className="chart" aria-label="Recent vital trend chart"><div className="chart-stage"><ResponsiveContainer width="100%" height={340}><AreaChart data={data} margin={{ top: 8, right: 12, bottom: 12, left: -12 }}><defs><linearGradient id="heartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a65343" stopOpacity={.2}/><stop offset="100%" stopColor="#a65343" stopOpacity={0}/></linearGradient><linearGradient id="spo2Fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#66724e" stopOpacity={.2}/><stop offset="100%" stopColor="#66724e" stopOpacity={0}/></linearGradient><linearGradient id="tempFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#b68143" stopOpacity={.17}/><stop offset="100%" stopColor="#b68143" stopOpacity={0}/></linearGradient></defs><Legend verticalAlign="top" align="right" height={42} iconType="plainline" iconSize={18} wrapperStyle={{fontFamily:'Inter, sans-serif',fontSize:11,color:'#514a40'}} /><CartesianGrid stroke="#d7cebf" strokeDasharray="2 5" vertical={false} /><XAxis dataKey="name" interval="preserveStartEnd" minTickGap={36} axisLine={false} tickLine={false} tick={{fontSize:10, fill:'#736b5f'}} dy={8} /><YAxis axisLine={false} tickLine={false} tick={{fontSize:10, fill:'#736b5f'}} /><Tooltip cursor={{stroke:'#a89d8d', strokeDasharray:'3 4'}} contentStyle={{border:'1px solid #cabfad',borderRadius:10,fontFamily:'JetBrains Mono',boxShadow:'0 10px 30px rgba(61,48,35,.14)',background:'#fffaf1'}} labelStyle={{color:'#736b5f',marginBottom:6}} /><Area {...motion} connectNulls type="monotone" dataKey="heart" name="Heart rate (bpm)" stroke="#a65343" strokeWidth={2.4} fill="url(#heartFill)" dot={{r:2.5, fill:'#fffaf1', strokeWidth:2}} activeDot={{r:5, strokeWidth:2, fill:'#fffaf1'}} /><Area {...motion} connectNulls type="monotone" dataKey="spo2" name="Oxygen saturation (%)" stroke="#66724e" strokeWidth={2.4} fill="url(#spo2Fill)" dot={{r:2.5, fill:'#fffaf1', strokeWidth:2}} activeDot={{r:5, strokeWidth:2, fill:'#fffaf1'}} /><Area {...motion} connectNulls type="monotone" dataKey="temperature" name="Temperature (°C)" stroke="#b68143" strokeWidth={2.4} fill="url(#tempFill)" dot={{r:2.5, fill:'#fffaf1', strokeWidth:2}} activeDot={{r:5, strokeWidth:2, fill:'#fffaf1'}} /></AreaChart></ResponsiveContainer></div><div className="chart-origin"><span className="source-note">Simulated data</span></div></div>
+  return <div className="chart" aria-label="Recent vital trend chart"><div className="trend-tabs" role="tablist" aria-label="Trend legend and metric selector">{Object.entries(trendMetrics).map(([key, item]) => <button key={key} role="tab" aria-selected={metric === key} onClick={() => setMetric(key as keyof typeof trendMetrics)}><i style={{ background: item.color }} /><span>{item.label}<small>{item.unit}</small></span></button>)}</div><div className="chart-stage"><ResponsiveContainer width="100%" height={340}><AreaChart data={data} margin={{ top: 8, right: 12, bottom: 12, left: -12 }}><defs><linearGradient id="metricFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={selected.color} stopOpacity={.22}/><stop offset="100%" stopColor={selected.color} stopOpacity={0}/></linearGradient></defs><Legend verticalAlign="top" align="right" height={42} iconType="plainline" iconSize={18} wrapperStyle={{fontFamily:'Inter, sans-serif',fontSize:11,color:'#514a40'}} /><CartesianGrid stroke="#d7cebf" strokeDasharray="2 5" vertical={false} /><XAxis dataKey="name" interval="preserveStartEnd" minTickGap={36} axisLine={false} tickLine={false} tick={{fontSize:10, fill:'#736b5f'}} dy={8} /><YAxis unit={` ${selected.unit}`} width={66} axisLine={false} tickLine={false} tick={{fontSize:10, fill:'#736b5f'}} /><Tooltip cursor={{stroke:'#a89d8d', strokeDasharray:'3 4'}} contentStyle={{border:'1px solid #cabfad',borderRadius:10,fontFamily:'JetBrains Mono',boxShadow:'0 10px 30px rgba(61,48,35,.14)',background:'#fffaf1'}} labelStyle={{color:'#736b5f',marginBottom:6}} /><Area {...motion} connectNulls type="monotone" dataKey={metric} name={`${selected.label} (${selected.unit})`} stroke={selected.color} strokeWidth={2.6} fill="url(#metricFill)" dot={{r:2.5, fill:'#fffaf1', strokeWidth:2}} activeDot={{r:5, strokeWidth:2, fill:'#fffaf1'}} /></AreaChart></ResponsiveContainer></div><div className="chart-origin"><span className="source-note">{sourceLabel}</span></div></div>
 }
 
 function AlertsList({ patientId, alerts, professional = false }: { patientId: string; alerts: Alert[]; professional?: boolean }) {
   const client = useQueryClient()
   const acknowledgement = useMutation({ mutationFn: api.acknowledge, onSuccess: () => client.invalidateQueries({ queryKey: ['alerts', patientId] }) })
   if (!alerts.length) return <EmptyState icon="alerts" title="No alerts" body="There are no alerts generated from persisted readings." />
-  return <div>{alerts.map(alert => <div className={`alert-row ${alert.acknowledged ? 'ack' : ''}`} key={alert.id}><span className={`alert-marker ${alert.severity.toLowerCase()}`} aria-hidden="true" /><div><strong>{alert.message}</strong><small>{alert.acknowledged ? 'Reviewed' : 'Needs review'} · Simulated reading</small></div>{professional && !alert.acknowledged && <button disabled={acknowledgement.isPending} onClick={() => acknowledgement.mutate(alert.id)}>Acknowledge</button>}</div>)}</div>
+  return <div>{alerts.map(alert => <div className={`alert-row ${alert.acknowledged ? 'ack' : ''}`} key={alert.id}><span className={`alert-marker ${alert.severity.toLowerCase()}`} aria-hidden="true" /><div><strong>{alert.message}</strong><small>{alert.acknowledged ? 'Reviewed' : 'Needs review'} · Persisted reading</small></div>{professional && !alert.acknowledged && <button disabled={acknowledgement.isPending} onClick={() => acknowledgement.mutate(alert.id)}>Acknowledge</button>}</div>)}</div>
 }
 
 function DeviceList({ devices }: { devices: Device[] }) {
   if (!devices.length) return <EmptyState title="No monitoring device linked" body="A device will appear here after a healthcare professional links it to this profile." />
-  return <div className="device-list">{devices.map(device => <article className="device-row" key={device.id}><div><span className="device-kind">{device.device_type === 'SIMULATOR' ? 'Simulator' : 'Physical device'}</span><span className={`device-state ${device.status.toLowerCase()}`}><i />{device.status.toLowerCase()}</span></div><strong>{device.device_uid}</strong><p>{device.last_seen_at ? 'Connected and reporting' : 'Waiting for first reading'}{device.firmware_version ? ` · Firmware ${device.firmware_version}` : ''}</p></article>)}</div>
+  return <div className="device-list">{devices.map(device => <article className="device-row" key={device.id}><div><span className="device-kind">{device.device_type === 'SIMULATOR' ? 'Software simulator' : 'ESP32 finger-rest device'}</span><span className={`device-state ${device.status.toLowerCase()}`}><i />{device.status.toLowerCase()}</span></div><strong>{device.device_uid}</strong><p>{device.last_seen_at ? `Last successful contact ${time(device.last_seen_at)}` : 'Waiting for first successful reading'}{device.firmware_version ? ` · Firmware ${device.firmware_version}` : ''}</p></article>)}</div>
 }
 
 function DemoControls({ patientId }: { patientId: string }) {
@@ -120,7 +132,7 @@ function PatientDetail({ patient, professional = false }: { patient: Patient; pr
   if (failed) return <ErrorState message={failed.error?.message ?? 'Unable to load patient information.'} />
   const sessions = data.sessions.data ?? []
   const risk = data.risks.data?.[0]
-  return <><PageHeading eyebrow={professional ? patient.patient_code : 'HOW AM I DOING'} title={professional ? patient.display_name : `Monitoring overview for ${patient.display_name}`} body={sessions[0] ? 'Your latest readings and monitoring summary are ready.' : 'This workspace is ready when the first simulated reading arrives.'} />{professional && <DemoControls patientId={patient.id} />}<VitalsGrid sessions={sessions} /><section className="two-col"><div className="panel instrument-panel"><div className="section-title"><div><span className="eyebrow">DECISION SUPPORT</span><h2>Prototype Rule-Based Risk Assessment</h2></div>{risk && <StatusBadge level={risk.risk_level} />}</div>{risk ? <div className="risk-copy"><p>{risk.explanation}</p></div> : <EmptyState title="No assessment available" body="An assessment will appear after valid simulated measurements are received." />}<RiskDisclosureNote /></div><div className="panel"><div className="section-title"><div><span className="eyebrow">CONNECTED SOURCE</span><h2>Monitoring status</h2></div></div><DeviceList devices={data.devices.data ?? []} /></div></section><section className="panel"><div className="section-title"><div><span className="eyebrow">RECENT ACTIVITY</span><h2>Recent alerts</h2></div><Link to={professional ? '/doctor/alerts' : '/patient/alerts'}>View all →</Link></div><AlertsList patientId={patient.id} alerts={(data.alerts.data ?? []).slice(0, 3)} professional={professional} /></section></>
+  return <><PageHeading eyebrow={professional ? patient.patient_code : 'HOW AM I DOING'} title={professional ? patient.display_name : `Monitoring overview for ${patient.display_name}`} body={sessions[0] ? 'Your latest readings and monitoring summary are ready.' : 'This workspace is ready when the first monitoring reading arrives.'} />{professional && <DemoControls patientId={patient.id} />}<VitalsGrid sessions={sessions} /><section className="two-col"><div className="panel instrument-panel"><div className="section-title"><div><span className="eyebrow">DECISION SUPPORT</span><h2>Prototype Rule-Based Risk Assessment</h2></div>{risk && <StatusBadge level={risk.risk_level} />}</div>{risk ? <div className="risk-copy"><p>{risk.explanation}</p></div> : <EmptyState title="No assessment available" body="An assessment will appear after valid measurements are received." />}<RiskDisclosureNote /></div><div className="panel"><div className="section-title"><div><span className="eyebrow">CONNECTED SOURCE</span><h2>Monitoring status</h2></div></div><DeviceList devices={data.devices.data ?? []} /></div></section><section className="panel"><div className="section-title"><div><span className="eyebrow">RECENT ACTIVITY</span><h2>Recent alerts</h2></div><Link to={professional ? '/doctor/alerts' : '/patient/alerts'}>View all →</Link></div><AlertsList patientId={patient.id} alerts={(data.alerts.data ?? []).slice(0, 3)} professional={professional} /></section></>
 }
 
 export function PatientDashboard() {
@@ -146,7 +158,7 @@ function PatientVitalsContent({ patient }: { patient: Patient }) {
 function HistoryTable({ sessions }: { sessions: Session[] }) {
   const rows = sessions.flatMap(session => session.measurements.map(vital => ({ session, vital })))
   if (!rows.length) return <EmptyState title="No measurements yet" body="Persisted readings will appear here after a linked monitoring source sends data." />
-  return <div className="table-wrap"><table className="history-table"><thead><tr><th>Parameter</th><th>Value</th><th>Quality</th><th>Recorded</th><th>Origin</th></tr></thead><tbody>{rows.map(({ session, vital }) => <tr key={`${session.id}-${vital.vital_type}`}><td data-label="Parameter">{vitalMeta[vital.vital_type as keyof typeof vitalMeta]?.label ?? vital.vital_type.replaceAll('_', ' ')}</td><td className="mono" data-label="Value">{vital.value} {vital.unit}</td><td data-label="Quality"><StatusBadge status={vital.quality_status} /></td><td className="mono" data-label="Recorded">{time(session.recorded_at)}</td><td data-label="Origin">{session.source === 'SIMULATED' ? <SimulatedTag /> : session.source}</td></tr>)}</tbody></table></div>
+  return <div className="table-wrap"><table className="history-table"><thead><tr><th>Parameter</th><th>Value</th><th>Quality</th><th>Recorded</th><th>Origin</th></tr></thead><tbody>{rows.map(({ session, vital }) => <tr key={`${session.id}-${vital.vital_type}`}><td data-label="Parameter">{vitalMeta[vital.vital_type as keyof typeof vitalMeta]?.label ?? `${vital.vital_type.replaceAll('_', ' ')} (legacy)`}</td><td className="mono" data-label="Value">{vital.value} {vital.unit}</td><td data-label="Quality"><StatusBadge status={vital.quality_status} /></td><td className="mono" data-label="Recorded">{time(session.recorded_at)}</td><td data-label="Origin">{session.source === 'SIMULATED' ? <SimulatedTag /> : <span className="physical-source">ESP32</span>}</td></tr>)}</tbody></table></div>
 }
 
 export function PatientTrends() {
@@ -237,6 +249,31 @@ export function DoctorPatientDetail() {
   return <div className="workspace"><Link className="back" to="/doctor/patients">← All patients</Link><PatientDetail patient={patient} professional /></div>
 }
 
+function DeviceRegistrationPanel({ patients }: { patients: Patient[] }) {
+  const client = useQueryClient()
+  const [registration, setRegistration] = useState<DeviceRegistration | null>(null)
+  const register = useMutation({
+    mutationFn: api.registerDevice,
+    onSuccess: async device => {
+      setRegistration(device)
+      await client.invalidateQueries({ queryKey: ['devices', device.patient_id] })
+    },
+  })
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    setRegistration(null)
+    register.mutate({
+      patient_id: String(data.get('patient_id')),
+      device_uid: String(data.get('device_uid')).trim(),
+      device_type: 'ESP32',
+      firmware_version: String(data.get('firmware_version')).trim() || undefined,
+    }, { onSuccess: () => form.reset() })
+  }
+  return <section className="panel device-registration"><div className="section-title"><div><span className="eyebrow">PHYSICAL DEVICE PROVISIONING</span><h2><Cpu /> Register an ESP32</h2></div></div><p>Link a finger-rest device to an assigned patient. The ingestion credential is revealed once after registration.</p><form className="device-form" onSubmit={submit}><label>Patient<select name="patient_id" required defaultValue=""><option value="" disabled>Select patient</option>{patients.map(patient => <option key={patient.id} value={patient.id}>{patient.display_name} · {patient.patient_code}</option>)}</select></label><label>Device UID<input name="device_uid" required minLength={3} maxLength={80} placeholder="PB-ESP32-001" /></label><label>Firmware <small>(optional)</small><input name="firmware_version" maxLength={40} placeholder="0.1.0" /></label><button className="primary" disabled={register.isPending || !patients.length}>{register.isPending ? 'Registering…' : 'Register device'}</button></form>{register.isError && <div className="form-error" role="alert">{register.error.message}</div>}{registration?.device_credential && <div className="credential-reveal" role="status"><KeyRound /><div><strong>Copy this credential now</strong><p>It will not appear again. Store it only in the device's private configuration.</p><code>{registration.device_credential}</code></div></div>}</section>
+}
+
 function AggregatePage({ kind }: { kind: 'alerts' | 'devices' }) {
   const patients = useAssignedPatients()
   const queries = useQueries({ queries: (patients.data ?? []).map(patient => ({ queryKey: [kind, patient.id], queryFn: () => kind === 'alerts' ? api.alerts(patient.id) : api.devices(patient.id) })) })
@@ -249,4 +286,7 @@ function AggregatePage({ kind }: { kind: 'alerts' | 'devices' }) {
 }
 
 export function DoctorAlerts() { return <div className="workspace"><PageHeading eyebrow="ATTENTION QUEUE" title="Alerts" body="Review and acknowledge alerts for patients assigned to you." /><AggregatePage kind="alerts" /></div> }
-export function DoctorDevices() { return <div className="workspace"><PageHeading eyebrow="MONITORING SOURCES" title="Devices" body="Review linked device status for patients assigned to you." /><AggregatePage kind="devices" /></div> }
+export function DoctorDevices() {
+  const patients = useAssignedPatients()
+  return <div className="workspace"><PageHeading eyebrow="MONITORING SOURCES" title="Devices" body="Register physical monitoring devices and review their most recent contact." />{patients.isLoading ? <Loading /> : patients.isError ? <ErrorState message={patients.error.message} retry={() => patients.refetch()} /> : <DeviceRegistrationPanel patients={patients.data ?? []} />}<AggregatePage kind="devices" /></div>
+}

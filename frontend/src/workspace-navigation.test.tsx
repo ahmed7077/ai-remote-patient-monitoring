@@ -8,7 +8,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import App from './App'
 import { api } from './api'
 import { AuthProvider } from './auth'
-import type { Patient, Role, User } from './types'
+import type { DeviceRegistration, Patient, Role, Session, User } from './types'
 
 const patientProfile: Patient = { id: 'profile-id', patient_code: 'PAT-001', display_name: 'Test Patient', linked_user_id: 'patient-id', created_at: '2026-01-01T00:00:00Z' }
 
@@ -26,7 +26,7 @@ function renderAuthenticated(path: string, role: Role, patients: Patient[] = [])
   return render(<QueryClientProvider client={client}><AuthProvider><MemoryRouter initialEntries={[path]}><App /><Location /></MemoryRouter></AuthProvider></QueryClientProvider>)
 }
 
-afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('patient workspace navigation', () => {
   it.each([
@@ -59,6 +59,28 @@ describe('patient workspace navigation', () => {
     renderAuthenticated('/patient/vitals', 'HEALTHCARE_PROFESSIONAL')
     await waitFor(() => expect(screen.getByLabelText('current path').textContent).toBe('/doctor/dashboard'))
   })
+
+  it('shows dated four-metric trends without sharing incompatible axes', async () => {
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) })
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    const sessions: Session[] = ['2026-10-08T10:00:00Z', '2026-10-09T10:00:00Z'].map((recorded_at, index) => ({
+      id: `session-${index}`, patient_id: patientProfile.id, device_id: 'device-id', recorded_at, received_at: recorded_at, source: 'PHYSICAL_DEVICE',
+      measurements: [
+        { vital_type: 'HEART_RATE', value: 72 + index, unit: 'bpm', quality_status: 'VALID' },
+        { vital_type: 'SPO2', value: 98, unit: '%', quality_status: 'VALID' },
+        { vital_type: 'TEMPERATURE', value: 36.7, unit: '°C', quality_status: 'VALID' },
+        { vital_type: 'RESPIRATORY_RATE', value: 15 + index, unit: 'breaths/min', quality_status: 'VALID' },
+      ],
+    }))
+    vi.spyOn(api, 'sessions').mockResolvedValue(sessions)
+    renderAuthenticated('/patient/trends', 'PATIENT', [patientProfile])
+    const selector = await screen.findByRole('tablist', { name: 'Trend legend and metric selector' })
+    expect(selector.querySelectorAll('[role="tab"]')).toHaveLength(4)
+    const respiratory = screen.getByRole('tab', { name: /Respiratory rate/ })
+    await userEvent.click(respiratory)
+    expect(respiratory.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByText('Physical ESP32 data')).toBeTruthy()
+  })
 })
 
 describe('professional workspace', () => {
@@ -87,6 +109,21 @@ describe('professional workspace', () => {
     await userEvent.click(screen.getByRole('button', { name: 'High risk' }))
     await waitFor(() => expect(simulate.mock.calls[0]?.slice(0, 2)).toEqual(['profile-id', 'high-risk']))
     expect(await screen.findByText(/Synthetic reading generated/)).toBeTruthy()
+  })
+
+  it('registers an ESP32 and reveals its credential once', async () => {
+    vi.spyOn(api, 'devices').mockResolvedValue([])
+    const registered: DeviceRegistration = { id: 'device-id', patient_id: patientProfile.id, device_uid: 'PB-ESP32-001', device_type: 'ESP32', status: 'OFFLINE', last_seen_at: null, firmware_version: '0.1.0', device_credential: 'one-time-device-secret' }
+    const register = vi.spyOn(api, 'registerDevice').mockResolvedValue(registered)
+    renderAuthenticated('/doctor/devices', 'HEALTHCARE_PROFESSIONAL', [patientProfile])
+    await userEvent.selectOptions(await screen.findByLabelText('Patient'), patientProfile.id)
+    await userEvent.type(screen.getByLabelText('Device UID'), 'PB-ESP32-001')
+    await userEvent.type(screen.getByLabelText(/Firmware/), '0.1.0')
+    await userEvent.click(screen.getByRole('button', { name: 'Register device' }))
+    await waitFor(() => expect(register.mock.calls[0]?.[0]).toEqual({ patient_id: patientProfile.id, device_uid: 'PB-ESP32-001', device_type: 'ESP32', firmware_version: '0.1.0' }))
+    expect(await screen.findByText('Copy this credential now')).toBeTruthy()
+    expect(screen.getByText('one-time-device-secret')).toBeTruthy()
+    expect(screen.getByText(/will not appear again/i)).toBeTruthy()
   })
 
   it('keeps patient users out of professional routes', async () => {

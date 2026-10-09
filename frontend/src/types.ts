@@ -1,11 +1,31 @@
-export type Role='PATIENT'|'HEALTHCARE_PROFESSIONAL'; export type RiskLevel='NORMAL'|'WARNING'|'HIGH_RISK';
-export interface User{id:string;full_name:string;email:string;role:Role;is_active:boolean}
-export interface TokenResponse{access_token:string;refresh_token:string;token_type:'bearer'}
-export interface Patient{id:string;patient_code:string;display_name:string;linked_user_id:string|null;created_at:string}
-export interface PatientCreate{patient_code:string;display_name:string;linked_user_email?:string}
-export type DemoScenario='normal'|'warning'|'high-risk'
-export interface Device{id:string;device_uid:string;patient_id:string;device_type:'SIMULATOR'|'ESP32';status:'ONLINE'|'OFFLINE'|'STALE';last_seen_at:string|null;firmware_version:string|null}
-export interface Vital{vital_type:'HEART_RATE'|'SPO2'|'SYSTOLIC_BP'|'DIASTOLIC_BP'|'TEMPERATURE';value:number;unit:string;quality_status:'VALID'|'SUSPECT'|'INVALID'}
-export interface Session{id:string;patient_id:string;device_id:string;recorded_at:string;received_at:string;source:string;measurements:Vital[]}
-export interface Risk{id:string;patient_id:string;session_id:string;risk_level:RiskLevel;assessment_method:string;explanation:string;created_at:string}
-export interface Alert{id:string;patient_id:string;session_id:string;severity:RiskLevel;message:string;acknowledged:boolean;acknowledged_by:string|null;acknowledged_at:string|null;created_at:string}
+export type Role = 'PATIENT' | 'HEALTHCARE_PROFESSIONAL'
+export type RiskLevel = 'NORMAL' | 'WARNING' | 'HIGH_RISK'
+export type MeasurementSource = 'SIMULATED' | 'PHYSICAL_DEVICE'
+export type VitalType = 'HEART_RATE' | 'SPO2' | 'TEMPERATURE' | 'RESPIRATORY_RATE' | 'SYSTOLIC_BP' | 'DIASTOLIC_BP'
+
+export interface User { id: string; full_name: string; email: string; role: Role; is_active: boolean }
+export interface TokenResponse { access_token: string; refresh_token: string; token_type: 'bearer' }
+export interface Patient { id: string; patient_code: string; display_name: string; linked_user_id: string | null; created_at: string }
+export interface PatientCreate { patient_code: string; display_name: string; linked_user_email?: string }
+export type DemoScenario = 'normal' | 'warning' | 'high-risk'
+export interface Device { id: string; device_uid: string; patient_id: string; device_type: 'SIMULATOR' | 'ESP32'; status: 'ONLINE' | 'OFFLINE' | 'STALE'; last_seen_at: string | null; firmware_version: string | null }
+export interface DeviceCreate { device_uid: string; patient_id: string; device_type: 'ESP32'; firmware_version?: string }
+export interface DeviceRegistration extends Device { device_credential: string | null }
+export interface Vital { vital_type: VitalType; value: number; unit: string; quality_status: 'VALID' | 'SUSPECT' | 'INVALID' }
+export interface Session {
+  id: string
+  patient_id: string
+  device_id: string
+  recorded_at: string
+  received_at: string
+  source: MeasurementSource
+  device_session_id?: string | null
+  acquisition_duration_seconds?: number | null
+  algorithm_version?: string | null
+  signal_quality?: Record<string, number | string | boolean> | null
+  measurement_availability?: Record<string, boolean> | null
+  device_error_code?: string | null
+  measurements: Vital[]
+}
+export interface Risk { id: string; patient_id: string; session_id: string; risk_level: RiskLevel; assessment_method: string; explanation: string; created_at: string }
+export interface Alert { id: string; patient_id: string; session_id: string; severity: RiskLevel; message: string; acknowledged: boolean; acknowledged_by: string | null; acknowledged_at: string | null; created_at: string }

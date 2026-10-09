@@ -78,9 +78,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .auth-form h2 { margin: 0; font-size: 36px; letter-spacing: -.04em; }
 .auth-form > form > p, .page-head p { color: var(--muted); line-height: 1.6; }
 .auth-form label { display: block; margin-top: 18px; font-size: 13px; font-weight: 650; }
-.auth-form input, .auth-form select, .patient-form input, .filter-select { width: 100%; margin-top: 7px; padding: 12px 13px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); color: var(--ink); background: white; transition: border-color var(--fast), box-shadow var(--fast), background var(--fast); }
-.auth-form input:hover, .auth-form select:hover, .patient-form input:hover, .filter-select:hover { border-color: #91a09c; }
-.auth-form input:focus, .auth-form select:focus, .patient-form input:focus, .filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(21,95,104,.1); }
+.auth-form input, .auth-form select, .patient-form input, .device-form input, .device-form select, .filter-select { width: 100%; margin-top: 7px; padding: 12px 13px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); color: var(--ink); background: white; transition: border-color var(--fast), box-shadow var(--fast), background var(--fast); }
+.auth-form input:hover, .auth-form select:hover, .patient-form input:hover, .device-form input:hover, .device-form select:hover, .filter-select:hover { border-color: #91a09c; }
+.auth-form input:focus, .auth-form select:focus, .patient-form input:focus, .device-form input:focus, .device-form select:focus, .filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(21,95,104,.1); }
 .primary { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; margin-top: 22px; padding: 13px 16px; border: 1px solid var(--accent-dark); border-radius: 13px 13px 4px 13px; color: white; background: linear-gradient(145deg, #bf7654, var(--accent)); box-shadow: inset 0 1px rgba(255,255,255,.24), 0 8px 18px rgba(143,78,53,.2); font-weight: 700; transition: transform var(--fast), box-shadow var(--fast), background var(--fast), border-radius var(--fast); }
 .primary:hover:not(:disabled) { transform: translateY(-2px); border-radius: 13px 4px 13px 13px; background: linear-gradient(145deg, #b96d4c, var(--accent-dark)); box-shadow: inset 0 1px rgba(255,255,255,.2), 0 12px 24px rgba(143,78,53,.27); }
 .primary:active:not(:disabled) { transform: translateY(0); box-shadow: inset 0 1px 3px rgba(0,0,0,.15); }
@@ -209,12 +209,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .device-kind { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .device-state { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
 .device-state.offline i { background: var(--subtle); }
+.device-state.stale i { background: var(--caution); }
 .device-row strong { display: block; margin-top: 13px; font-family: var(--font-mono); font-size: 13px; }
 .device-row p, .device-row small { color: var(--muted); }
 .device-row p { margin: 7px 0 3px; font-size: 11px; }
 .device-row small { font-family: var(--font-mono); font-size: 9px; }
 
 .chart { min-width: 0; margin-top: 18px; font-family: var(--font-mono); font-size: 10px; }
+.trend-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.trend-tabs button { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px 12px 4px 12px; color: var(--muted); text-align: left; background: rgba(255,250,241,.72); transition: transform var(--fast), color var(--fast), border-color var(--fast), box-shadow var(--fast), background var(--fast); }
+.trend-tabs button:hover { transform: translateY(-1px); border-color: var(--line-strong); }
+.trend-tabs button[aria-selected="true"] { color: var(--ink); border-color: #b9aa95; background: var(--surface); box-shadow: 0 5px 14px rgba(61,48,35,.09); }
+.trend-tabs button > i { flex: 0 0 auto; width: 9px; height: 24px; border-radius: 8px; }
+.trend-tabs button > span { display: grid; min-width: 0; gap: 2px; font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; }
+.trend-tabs small { overflow: hidden; color: var(--muted); font-family: var(--font-mono); font-size: 8px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .chart-stage { padding: 10px 10px 2px; border: 1px solid var(--line); border-radius: 16px 16px 6px 16px; background: linear-gradient(180deg, #fffaf1, #f3ecdf); box-shadow: inset 0 1px rgba(255,255,255,.7); }
 .source-note { color: var(--muted); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
 .chart-origin { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 8px; color: var(--muted); font-family: Inter, sans-serif; font-size: 9px; }
@@ -223,12 +231,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .history-table th { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
 .history-table td.mono { font-family: var(--font-mono); }
 .table-wrap { overflow-x: auto; }
+.physical-source { display: inline-flex; padding: 4px 7px; border: 1px solid #b7c3c1; border-radius: 8px 8px 3px 8px; color: var(--primary-dark); background: var(--primary-soft); font-size: 9px; font-weight: 750; letter-spacing: .06em; }
 
 .patient-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 14px; align-items: end; }
 .patient-form label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 650; }
 .patient-form label small { color: var(--muted); font-weight: 400; }
 .patient-form input { margin: 0; }
 .patient-form .primary { width: auto; min-height: 43px; margin: 0; white-space: nowrap; }
+.device-registration > p { max-width: 720px; margin: -7px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.device-registration h2 { display: flex; align-items: center; gap: 8px; }
+.device-registration h2 svg { width: 19px; color: var(--accent); }
+.device-form { display: grid; grid-template-columns: 1.2fr 1fr .7fr auto; gap: 14px; align-items: end; }
+.device-form label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; font-weight: 650; }
+.device-form label small { color: var(--muted); font-weight: 400; }
+.device-form input, .device-form select { min-width: 0; margin: 0; }
+.device-form .primary { width: auto; min-height: 43px; margin: 0; white-space: nowrap; }
+.credential-reveal { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 13px; margin-top: 16px; padding: 15px; border: 1px solid #b9c6a1; border-radius: 14px 14px 5px 14px; color: var(--ink); background: var(--positive-soft); }
+.credential-reveal > svg { width: 20px; color: var(--positive); }
+.credential-reveal p { margin: 4px 0 10px; color: var(--muted); font-size: 11px; }
+.credential-reveal code { display: block; overflow-wrap: anywhere; padding: 10px; border: 1px dashed #9cab85; border-radius: 8px; color: #334027; background: rgba(255,255,255,.58); font-size: 11px; user-select: all; }
 .patient-list, .triage-list { display: grid; }
 .triage-list a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 14px 8px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
 .triage-list a { transition: background var(--fast), padding var(--fast); }
@@ -273,8 +294,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @media (max-width: 1100px) {
   .vital-grid { grid-template-columns: repeat(2, 1fr); }
-  .patient-form { grid-template-columns: 1fr 1fr; }
-  .patient-form .primary { width: max-content; }
+  .patient-form, .device-form { grid-template-columns: 1fr 1fr; }
+  .patient-form .primary, .device-form .primary { width: max-content; }
   .two-col { grid-template-columns: 1fr; }
 }
 
@@ -299,8 +320,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .auth-form h2 { font-size: 31px; }
   .workspace { padding-inline: 14px; }
   .page-head { display: block; margin-bottom: 24px; }
-  .vital-grid, .summary, .patient-form { grid-template-columns: 1fr; }
-  .patient-form .primary { width: 100%; }
+  .vital-grid, .summary, .patient-form, .device-form { grid-template-columns: 1fr; }
+  .patient-form .primary, .device-form .primary { width: 100%; }
+  .trend-tabs { grid-template-columns: 1fr 1fr; }
   .alert-row { grid-template-columns: 1fr; }
   .alert-row .status-badge { order: -1; }
   .patient-list a { grid-template-columns: auto 1fr; }
