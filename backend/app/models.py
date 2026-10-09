@@ -35,6 +35,12 @@ class VitalType(StrEnum):
     SYSTOLIC_BP = "SYSTOLIC_BP"
     DIASTOLIC_BP = "DIASTOLIC_BP"
     TEMPERATURE = "TEMPERATURE"
+    RESPIRATORY_RATE = "RESPIRATORY_RATE"
+
+
+class MeasurementSource(StrEnum):
+    SIMULATED = "SIMULATED"
+    PHYSICAL_DEVICE = "PHYSICAL_DEVICE"
 
 
 class QualityStatus(StrEnum):
@@ -94,15 +100,35 @@ class Device(Base):
     patient: Mapped[Patient] = relationship(back_populates="devices")
 
 
+class DeviceCredential(Base):
+    __tablename__ = "device_credentials"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    token_prefix: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class MeasurementSession(Base):
     __tablename__ = "measurement_sessions"
-    __table_args__ = (UniqueConstraint("device_id", "recorded_at", name="uq_device_recorded"),)
+    __table_args__ = (
+        UniqueConstraint("device_id", "recorded_at", name="uq_device_recorded"),
+        UniqueConstraint("device_id", "device_session_id", name="uq_device_session_id"),
+    )
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), index=True)
     device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id"), index=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     source: Mapped[str] = mapped_column(String(30), default="SIMULATED")
+    device_session_id: Mapped[str | None] = mapped_column(String(80))
+    acquisition_duration_seconds: Mapped[float | None] = mapped_column(Float)
+    algorithm_version: Mapped[str | None] = mapped_column(String(40))
+    signal_quality: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    measurement_availability: Mapped[dict[str, bool] | None] = mapped_column(JSON)
+    device_error_code: Mapped[str | None] = mapped_column(String(80))
     measurements: Mapped[list["VitalMeasurement"]] = relationship(cascade="all, delete-orphan")
 
 

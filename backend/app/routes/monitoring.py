@@ -10,6 +10,7 @@ from app.access import can_access_patient
 from app.audit import record_audit
 from app.config import get_settings
 from app.database import get_db
+from app.device_security import issue_device_credential, revoke_device_credentials
 from app.models import (
     Alert,
     Device,
@@ -25,6 +26,8 @@ from app.schemas import (
     AssignmentRequest,
     DemoSimulationRequest,
     DeviceCreate,
+    DeviceCredentialResponse,
+    DeviceRegistrationResponse,
     DeviceResponse,
     IngestionRequest,
     PatientCreate,
@@ -103,22 +106,68 @@ def list_patients(
     )
 
 
-@router.post("/devices", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/devices", response_model=DeviceRegistrationResponse, status_code=status.HTTP_201_CREATED
+)
 def register_device(
     payload: DeviceCreate,
     user: User = Depends(require_role(Role.HEALTHCARE_PROFESSIONAL)),
     db: Session = Depends(get_db),
-) -> Device:
+) -> DeviceRegistrationResponse:
     can_access_patient(db, user, payload.patient_id)
     if db.scalar(select(Device).where(Device.device_uid == payload.device_uid)):
         raise HTTPException(status_code=409, detail="Device UID already registered")
     device = Device(**payload.model_dump())
     db.add(device)
     db.flush()
+    credential = (
+        issue_device_credential(db, device.id) if device.device_type.value == "ESP32" else None
+    )
     record_audit(db, "REGISTER_DEVICE", "DEVICE", user.id, str(device.id))
     db.commit()
     db.refresh(device)
+    return DeviceRegistrationResponse.model_validate(device).model_copy(
+        update={"device_credential": credential}
+    )
+
+
+def assigned_device(db: Session, user: User, device_id: uuid.UUID) -> Device:
+    device = db.get(Device, device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    can_access_patient(db, user, device.patient_id)
     return device
+
+
+@router.post(
+    "/devices/{device_id}/credentials/rotate",
+    response_model=DeviceCredentialResponse,
+)
+def rotate_device_credential(
+    device_id: uuid.UUID,
+    user: User = Depends(require_role(Role.HEALTHCARE_PROFESSIONAL)),
+    db: Session = Depends(get_db),
+) -> DeviceCredentialResponse:
+    device = assigned_device(db, user, device_id)
+    if device.device_type.value != "ESP32":
+        raise HTTPException(status_code=422, detail="Only physical devices use credentials")
+    revoke_device_credentials(db, device.id)
+    credential = issue_device_credential(db, device.id)
+    record_audit(db, "ROTATE_DEVICE_CREDENTIAL", "DEVICE", user.id, str(device.id))
+    db.commit()
+    return DeviceCredentialResponse(device_id=device.id, device_credential=credential)
+
+
+@router.post("/devices/{device_id}/credentials/revoke", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_device_credential(
+    device_id: uuid.UUID,
+    user: User = Depends(require_role(Role.HEALTHCARE_PROFESSIONAL)),
+    db: Session = Depends(get_db),
+) -> None:
+    device = assigned_device(db, user, device_id)
+    revoke_device_credentials(db, device.id)
+    record_audit(db, "REVOKE_DEVICE_CREDENTIAL", "DEVICE", user.id, str(device.id))
+    db.commit()
 
 
 @router.get("/patients/{patient_id}/devices", response_model=list[DeviceResponse])

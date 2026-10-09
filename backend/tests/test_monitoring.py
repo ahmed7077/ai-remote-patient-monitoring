@@ -166,12 +166,8 @@ def test_professional_can_generate_review_demo_sessions(client: TestClient) -> N
     assert normal.status_code == 201
     assert normal.json()["source"] == "SIMULATED"
     assert high_risk.status_code == 201
-    devices = client.get(
-        f"/api/v1/patients/{patient_id}/devices", headers=doctor_headers
-    ).json()
-    alerts = client.get(
-        f"/api/v1/patients/{patient_id}/alerts", headers=doctor_headers
-    ).json()
+    devices = client.get(f"/api/v1/patients/{patient_id}/devices", headers=doctor_headers).json()
+    alerts = client.get(f"/api/v1/patients/{patient_id}/alerts", headers=doctor_headers).json()
     assert len(devices) == 1
     assert devices[0]["device_type"] == "SIMULATOR"
     assert alerts[0]["severity"] == "HIGH_RISK"

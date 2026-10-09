@@ -4,7 +4,15 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
-from app.models import DeviceStatus, DeviceType, QualityStatus, RiskLevel, Role, VitalType
+from app.models import (
+    DeviceStatus,
+    DeviceType,
+    MeasurementSource,
+    QualityStatus,
+    RiskLevel,
+    Role,
+    VitalType,
+)
 
 
 class ORMModel(BaseModel):
@@ -83,6 +91,15 @@ class DeviceResponse(ORMModel):
     firmware_version: str | None
 
 
+class DeviceRegistrationResponse(DeviceResponse):
+    device_credential: str | None = None
+
+
+class DeviceCredentialResponse(BaseModel):
+    device_id: uuid.UUID
+    device_credential: str
+
+
 class MeasurementInput(BaseModel):
     type: VitalType
     value: float
@@ -92,8 +109,21 @@ class MeasurementInput(BaseModel):
 class IngestionRequest(BaseModel):
     device_uid: str
     recorded_at: datetime
-    source: str = "SIMULATED"
+    source: MeasurementSource = MeasurementSource.SIMULATED
+    device_session_id: str | None = Field(default=None, min_length=8, max_length=80)
+    acquisition_duration_seconds: float | None = Field(default=None, ge=0, le=600)
+    algorithm_version: str | None = Field(default=None, max_length=40)
+    signal_quality: dict[str, float | str | bool] | None = None
+    measurement_availability: dict[str, bool] | None = None
+    device_error_code: str | None = Field(default=None, max_length=80)
     measurements: list[MeasurementInput] = Field(min_length=1, max_length=10)
+
+    @model_validator(mode="after")
+    def unique_measurement_types(self) -> "IngestionRequest":
+        types = [measurement.type for measurement in self.measurements]
+        if len(types) != len(set(types)):
+            raise ValueError("A session cannot contain duplicate measurement types")
+        return self
 
 
 class DemoScenario(StrEnum):
@@ -120,6 +150,12 @@ class SessionResponse(ORMModel):
     recorded_at: datetime
     received_at: datetime
     source: str
+    device_session_id: str | None
+    acquisition_duration_seconds: float | None
+    algorithm_version: str | None
+    signal_quality: dict[str, float | str | bool] | None
+    measurement_availability: dict[str, bool] | None
+    device_error_code: str | None
     measurements: list[VitalResponse]
 
 
