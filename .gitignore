@@ -236,3 +236,9 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+
+# ESP32 firmware
+.pio/
+.pioenvs/
+.piolibdeps/
+firmware/**/include/pulsebridge_config.h
