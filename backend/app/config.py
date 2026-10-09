@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     device_ingestion_key: str = "development-device-ingestion-key"
     access_token_minutes: int = 15
     refresh_token_days: int = 7
+    device_stale_minutes: int = Field(default=10, ge=1, le=1440)
     frontend_origin: str = "http://localhost:5173"
 
 

@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.access import can_access_patient
 from app.audit import record_audit
+from app.config import get_settings
 from app.database import get_db
 from app.device_security import (
     authenticate_ingestion_device,
@@ -16,6 +17,7 @@ from app.device_security import (
 from app.models import (
     Alert,
     Device,
+    DeviceStatus,
     MeasurementSession,
     Patient,
     ProfessionalPatientAssignment,
@@ -179,7 +181,26 @@ def patient_devices(
     db: Session = Depends(get_db),
 ) -> list[Device]:
     can_access_patient(db, user, patient_id)
-    return list(db.scalars(select(Device).where(Device.patient_id == patient_id)))
+    devices = list(db.scalars(select(Device).where(Device.patient_id == patient_id)))
+    stale_before = datetime.now(UTC) - timedelta(minutes=get_settings().device_stale_minutes)
+    changed = False
+    for device in devices:
+        last_seen = device.last_seen_at
+        if last_seen is not None and last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=UTC)
+        derived = (
+            DeviceStatus.OFFLINE
+            if last_seen is None
+            else DeviceStatus.STALE
+            if last_seen < stale_before
+            else DeviceStatus.ONLINE
+        )
+        if device.status != derived:
+            device.status = derived
+            changed = True
+    if changed:
+        db.commit()
+    return devices
 
 
 @router.post("/ingestion/vitals", response_model=SessionResponse, status_code=201)

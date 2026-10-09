@@ -2,6 +2,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import Device
 
 
 def professional_headers(client: TestClient, email: str = "hardware@example.com") -> dict[str, str]:
@@ -174,3 +178,30 @@ def test_physical_device_rejects_bp_and_sensor_errors_do_not_create_alerts(
     assert result.status_code == 201
     assert all(item["quality_status"] == "INVALID" for item in result.json()["measurements"])
     assert client.get(f"/api/v1/patients/{patient_id}/alerts", headers=headers).json() == []
+
+
+def test_device_connectivity_is_derived_from_last_contact(client: TestClient, db: Session) -> None:
+    headers = professional_headers(client, "hardware-status@example.com")
+    patient_id, device_response = provision(client, headers, "401")
+    before_upload = client.get(f"/api/v1/patients/{patient_id}/devices", headers=headers).json()
+    assert before_upload[0]["status"] == "OFFLINE"
+
+    uploaded = client.post(
+        "/api/v1/ingestion/vitals",
+        headers={"X-Device-Credential": str(device_response["device_credential"])},
+        json=payload(str(device_response["device_uid"])),
+    )
+    assert uploaded.status_code == 201
+    assert (
+        client.get(f"/api/v1/patients/{patient_id}/devices", headers=headers).json()[0]["status"]
+        == "ONLINE"
+    )
+
+    device = db.scalar(select(Device).where(Device.device_uid == device_response["device_uid"]))
+    assert device is not None
+    device.last_seen_at = datetime.now(UTC) - timedelta(minutes=11)
+    db.commit()
+    assert (
+        client.get(f"/api/v1/patients/{patient_id}/devices", headers=headers).json()[0]["status"]
+        == "STALE"
+    )
