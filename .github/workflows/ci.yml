@@ -41,7 +41,7 @@ jobs:
           cache-dependency-path: |
             ml/pyproject.toml
             ml/constraints.txt
-      - run: pip install --constraint ml/constraints.txt -e "ml[dev]"
+      - run: pip install --constraint constraints.txt -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy src
