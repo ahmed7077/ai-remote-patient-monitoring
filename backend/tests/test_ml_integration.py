@@ -108,6 +108,8 @@ def test_model_metadata_requires_authentication_and_reports_real_metrics(
     assert payload["model_version"] == "icu-mortality-hr-temp-v1"
     assert payload["supported_parameters"] == ["HEART_RATE", "TEMPERATURE"]
     assert payload["held_out_metrics"]["roc_auc"] > 0.5
+    assert payload["model_comparison"]["random_forest"]["pr_auc"] > 0.25
+    assert "Temp_mean" in payload["global_feature_importance"]
 
 
 def test_insufficient_history_is_explicit_and_not_persisted(

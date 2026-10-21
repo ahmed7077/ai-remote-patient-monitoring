@@ -180,6 +180,8 @@ class MLModelResponse(BaseModel):
     development_partition: str
     held_out_partition: str
     held_out_metrics: dict[str, float | list[list[int]]]
+    model_comparison: dict[str, dict[str, float]]
+    global_feature_importance: dict[str, float]
     limitations: list[str]
     unavailable_reason: str | None = None
 

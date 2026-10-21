@@ -112,6 +112,8 @@ class MLRiskAssessmentService:
             "development_partition": self.metadata.get("development_partition", "Unavailable"),
             "held_out_partition": self.metadata.get("held_out_partition", "Unavailable"),
             "held_out_metrics": self.metadata.get("held_out_metrics", {}),
+            "model_comparison": self.metadata.get("cross_validation", {}),
+            "global_feature_importance": self.metadata.get("permutation_importance", {}),
             "limitations": self.metadata.get("limitations", []),
             "unavailable_reason": self.unavailable_reason,
         }

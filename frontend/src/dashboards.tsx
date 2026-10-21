@@ -1,6 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Activity, AlertOctagon, AlertTriangle, CheckCircle2, Cpu, HeartPulse, KeyRound, LoaderCircle, Thermometer, Users, Wind } from 'lucide-react'
+import { Activity, AlertOctagon, AlertTriangle, BrainCircuit, CheckCircle2, Cpu, Database, HeartPulse, KeyRound, LoaderCircle, Play, Thermometer, Users, Wind } from 'lucide-react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
@@ -289,4 +289,61 @@ export function DoctorAlerts() { return <div className="workspace"><PageHeading 
 export function DoctorDevices() {
   const patients = useAssignedPatients()
   return <div className="workspace"><PageHeading eyebrow="MONITORING SOURCES" title="Devices" body="Register physical monitoring devices and review their most recent contact." />{patients.isLoading ? <Loading /> : patients.isError ? <ErrorState message={patients.error.message} retry={() => patients.refetch()} /> : <DeviceRegistrationPanel patients={patients.data ?? []} />}<AggregatePage kind="devices" /></div>
+}
+
+function label(value: string) {
+  return value.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase())
+}
+
+function metric(value: number | number[][] | undefined) {
+  return typeof value === 'number' ? value.toFixed(3) : '—'
+}
+
+function MLAnalyticsWorkspace({ patient }: { patient: Patient }) {
+  const client = useQueryClient()
+  const model = useQuery({ queryKey: ['ml-model'], queryFn: api.mlModel })
+  const history = useQuery({ queryKey: ['ml-predictions', patient.id], queryFn: () => api.mlPredictions(patient.id) })
+  const inference = useMutation({
+    mutationFn: () => api.mlPredict(patient.id),
+    onSuccess: async () => client.invalidateQueries({ queryKey: ['ml-predictions', patient.id] }),
+  })
+  if (model.isLoading || history.isLoading) return <Loading />
+  if (model.isError) return <ErrorState message={model.error.message} retry={() => model.refetch()} />
+  if (history.isError) return <ErrorState message={history.error.message} retry={() => history.refetch()} />
+  const details = model.data
+  const result = inference.data ?? history.data?.[0]
+  const comparison = Object.entries(details.model_comparison)
+  const importance = Object.entries(details.global_feature_importance)
+    .sort((left, right) => Math.abs(right[1]) - Math.abs(left[1])).slice(0, 6)
+  return <>
+    <section className="ml-hero">
+      <div className="ml-orbit"><BrainCircuit /></div>
+      <div><span className="eyebrow">RESEARCH MODEL · {details.model_version}</span><h2>{details.target}</h2><p>Independent ICU research model using 48-hour heart-rate and temperature summaries. It remains separate from PulseBridge’s rule-based monitoring assessment.</p></div>
+      <button className="ml-run" disabled={!details.available || inference.isPending} onClick={() => inference.mutate()}>{inference.isPending ? <LoaderCircle /> : <Play />}{inference.isPending ? 'Analysing…' : 'Run research inference'}</button>
+    </section>
+    {inference.isError && <div className="form-error" role="alert">{inference.error.message}</div>}
+    <section className="ml-grid">
+      <article className="panel ml-result"><div className="section-title"><div><span className="eyebrow">LATEST OUTCOME</span><h2>Model result</h2></div><span className={`ml-availability ${result?.available ? 'ready' : ''}`}>{result?.available ? 'Available' : 'Unavailable'}</span></div>
+        {result?.available ? <><strong className="ml-outcome">{label(result.predicted_label ?? '')}</strong><div className="probability"><span style={{ width: `${(result.probability ?? 0) * 100}%` }} /></div><div className="ml-numbers"><span><strong>{((result.probability ?? 0) * 100).toFixed(1)}%</strong> model probability</span><span><strong>{(result.decision_threshold * 100).toFixed(0)}%</strong> decision threshold</span></div><p>{result.explanation}</p></> : <div className="ml-unavailable"><Database /><div><strong>No eligible 48-hour window yet</strong><p>{result?.explanation ?? 'Run the model after enough persisted heart-rate and temperature sessions are available.'}</p></div></div>}
+        <div className="synthetic-warning"><AlertTriangle /><span><strong>Demonstration boundary</strong> PulseBridge readings are synthetic and outside this model’s validation population. This output is not a diagnosis.</span></div>
+      </article>
+      <article className="panel ml-facts"><div className="section-title"><div><span className="eyebrow">MODEL CARD</span><h2>Evidence at a glance</h2></div></div><dl><div><dt>Training</dt><dd>{details.development_partition}</dd></div><div><dt>Held-out test</dt><dd>{details.held_out_partition}</dd></div><div><dt>Inputs</dt><dd>{details.supported_parameters.map(label).join(' · ')}</dd></div><div><dt>ROC-AUC</dt><dd>{metric(details.held_out_metrics.roc_auc)}</dd></div><div><dt>PR-AUC</dt><dd>{metric(details.held_out_metrics.pr_auc)}</dd></div><div><dt>Recall</dt><dd>{metric(details.held_out_metrics.recall)}</dd></div></dl></article>
+    </section>
+    <section className="panel"><div className="section-title"><div><span className="eyebrow">ACTUAL CROSS-VALIDATION RESULTS</span><h2>Model comparison</h2></div></div><div className="table-wrap"><table className="history-table model-table"><thead><tr><th>Candidate</th><th>ROC-AUC</th><th>PR-AUC</th><th>Recall</th><th>Brier score</th></tr></thead><tbody>{comparison.map(([name, scores]) => <tr key={name} className={name === 'random_forest' ? 'selected-model' : ''}><td data-label="Candidate"><strong>{label(name)}</strong>{name === 'random_forest' && <small>Selected</small>}</td><td data-label="ROC-AUC">{metric(scores.roc_auc)}</td><td data-label="PR-AUC">{metric(scores.pr_auc)}</td><td data-label="Recall">{metric(scores.recall)}</td><td data-label="Brier score">{metric(scores.brier_score)}</td></tr>)}</tbody></table></div></section>
+    <section className="ml-grid"><article className="panel"><div className="section-title"><div><span className="eyebrow">GLOBAL EXPLAINABILITY</span><h2>Most influential features</h2></div></div><div className="importance-list">{importance.map(([name, value]) => <div key={name}><span>{label(name)}</span><i><b style={{ width: `${Math.max(4, Math.abs(value) / Math.max(...importance.map(item => Math.abs(item[1]))) * 100)}%` }} /></i><code>{value.toFixed(4)}</code></div>)}</div><p className="fine-print">Permutation importance describes global predictive contribution on held-out data. It does not establish causation or explain an individual patient outcome.</p></article><article className="panel"><div className="section-title"><div><span className="eyebrow">KNOWN LIMITATIONS</span><h2>Interpret with care</h2></div></div><ul className="limitation-list">{details.limitations.map(item => <li key={item}>{item}</li>)}</ul></article></section>
+  </>
+}
+
+export function PatientAnalytics() {
+  return <div className="workspace"><PageHeading eyebrow="AI ANALYTICS" title="Research model" body="Explore a transparent, separately labelled machine-learning outcome based on eligible monitoring history." /><PatientPage emptyTitle="No patient profile linked" emptyBody="A linked monitoring profile is required before research inference can run.">{patient => <MLAnalyticsWorkspace patient={patient} />}</PatientPage></div>
+}
+
+export function DoctorAnalytics() {
+  const patients = useAssignedPatients()
+  const [selectedId, setSelectedId] = useState('')
+  if (patients.isLoading) return <Loading />
+  if (patients.isError) return <div className="workspace"><ErrorState message={patients.error.message} retry={() => patients.refetch()} /></div>
+  const assigned = patients.data ?? []
+  const patient = assigned.find(item => item.id === selectedId) ?? assigned[0]
+  return <div className="workspace"><PageHeading eyebrow="AI ANALYTICS" title="Research model" body="Review independently evaluated model evidence and run authorized inference for an assigned patient." />{patient ? <><label className="patient-picker">Patient<select value={patient.id} onChange={event => setSelectedId(event.target.value)}>{assigned.map(item => <option key={item.id} value={item.id}>{item.display_name} · {item.patient_code}</option>)}</select></label><MLAnalyticsWorkspace patient={patient} /></> : <EmptyState icon="patients" title="No patients assigned" body="Assign a patient before running research inference." />}</div>
 }

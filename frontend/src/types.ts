@@ -29,3 +29,38 @@ export interface Session {
 }
 export interface Risk { id: string; patient_id: string; session_id: string; risk_level: RiskLevel; assessment_method: string; explanation: string; created_at: string }
 export interface Alert { id: string; patient_id: string; session_id: string; severity: RiskLevel; message: string; acknowledged: boolean; acknowledged_by: string | null; acknowledged_at: string | null; created_at: string }
+export interface MLModel {
+  available: boolean
+  model_identifier: string
+  model_version: string
+  assessment_method: string
+  target: string
+  supported_parameters: string[]
+  input_window_hours: number
+  development_partition: string
+  held_out_partition: string
+  held_out_metrics: Record<string, number | number[][]>
+  model_comparison: Record<string, Record<string, number>>
+  global_feature_importance: Record<string, number>
+  limitations: string[]
+  unavailable_reason: string | null
+}
+export interface MLPrediction {
+  available: boolean
+  prediction_id: string | null
+  patient_id: string
+  model_identifier: string
+  model_version: string
+  assessment_method: string
+  predicted_label: 'SURVIVAL' | 'IN_HOSPITAL_DEATH' | null
+  probability: number | null
+  decision_threshold: number
+  supported_parameters: string[]
+  input_window_hours: number
+  source_data: MeasurementSource | 'MIXED' | null
+  explanation: string
+  limitations: string[]
+  window_started_at: string | null
+  window_ended_at: string | null
+  created_at: string | null
+}

@@ -1,5 +1,5 @@
 import {
-  Activity, AlertOctagon, AlertTriangle, Bell, CheckCircle2, FlaskConical,
+  Activity, AlertOctagon, AlertTriangle, Bell, BrainCircuit, CheckCircle2, FlaskConical,
   HeartPulse, LayoutDashboard, LineChart, LogOut, Menu, Radio, ShieldCheck,
   UserRound, Users, X, type LucideIcon,
 } from 'lucide-react'
@@ -70,14 +70,14 @@ const navigation: Record<Role, NavItem[]> = {
     { label: 'Overview', to: '/patient/dashboard', Icon: LayoutDashboard },
     { label: 'Vitals', to: '/patient/vitals', Icon: HeartPulse },
     { label: 'Trends', to: '/patient/trends', Icon: LineChart },
+    { label: 'AI analytics', to: '/patient/analytics', Icon: BrainCircuit },
     { label: 'Alerts', to: '/patient/alerts', Icon: Bell },
-    { label: 'Devices', to: '/patient/devices', Icon: Radio },
   ],
   HEALTHCARE_PROFESSIONAL: [
     { label: 'Overview', to: '/doctor/dashboard', Icon: LayoutDashboard },
     { label: 'Patients', to: '/doctor/patients', Icon: Users },
+    { label: 'AI analytics', to: '/doctor/analytics', Icon: BrainCircuit },
     { label: 'Alerts', to: '/doctor/alerts', Icon: Bell },
-    { label: 'Devices', to: '/doctor/devices', Icon: Radio },
   ],
 }
 

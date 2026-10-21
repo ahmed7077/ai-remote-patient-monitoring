@@ -8,7 +8,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import App from './App'
 import { api } from './api'
 import { AuthProvider } from './auth'
-import type { DeviceRegistration, Patient, Role, Session, User } from './types'
+import type { MLModel, MLPrediction, Patient, Role, Session, User } from './types'
 
 const patientProfile: Patient = { id: 'profile-id', patient_code: 'PAT-001', display_name: 'Test Patient', linked_user_id: 'patient-id', created_at: '2026-01-01T00:00:00Z' }
 
@@ -34,7 +34,6 @@ describe('patient workspace navigation', () => {
     ['/patient/vitals', 'No measurements yet'],
     ['/patient/trends', 'Trend unavailable'],
     ['/patient/alerts', 'No alerts'],
-    ['/patient/devices', 'No monitoring device linked'],
   ])('renders the direct route %s with an intentional empty state', async (path, emptyState) => {
     renderAuthenticated(path, 'PATIENT')
     expect(await screen.findByText(emptyState)).toBeTruthy()
@@ -44,8 +43,8 @@ describe('patient workspace navigation', () => {
   it.each([
     ['Vitals', '/patient/vitals'],
     ['Trends', '/patient/trends'],
+    ['AI analytics', '/patient/analytics'],
     ['Alerts', '/patient/alerts'],
-    ['Devices', '/patient/devices'],
   ])('navigates to %s and marks it active', async (label, path) => {
     renderAuthenticated('/patient/dashboard', 'PATIENT')
     await screen.findByText('No patient profile linked')
@@ -111,23 +110,79 @@ describe('professional workspace', () => {
     expect(await screen.findByText(/Synthetic reading generated/)).toBeTruthy()
   })
 
-  it('registers an ESP32 and reveals its credential once', async () => {
-    vi.spyOn(api, 'devices').mockResolvedValue([])
-    const registered: DeviceRegistration = { id: 'device-id', patient_id: patientProfile.id, device_uid: 'PB-ESP32-001', device_type: 'ESP32', status: 'OFFLINE', last_seen_at: null, firmware_version: '0.1.0', device_credential: 'one-time-device-secret' }
-    const register = vi.spyOn(api, 'registerDevice').mockResolvedValue(registered)
+  it('hides retired physical-device provisioning from the active workspace', async () => {
     renderAuthenticated('/doctor/devices', 'HEALTHCARE_PROFESSIONAL', [patientProfile])
-    await userEvent.selectOptions(await screen.findByLabelText('Patient'), patientProfile.id)
-    await userEvent.type(screen.getByLabelText('Device UID'), 'PB-ESP32-001')
-    await userEvent.type(screen.getByLabelText(/Firmware/), '0.1.0')
-    await userEvent.click(screen.getByRole('button', { name: 'Register device' }))
-    await waitFor(() => expect(register.mock.calls[0]?.[0]).toEqual({ patient_id: patientProfile.id, device_uid: 'PB-ESP32-001', device_type: 'ESP32', firmware_version: '0.1.0' }))
-    expect(await screen.findByText('Copy this credential now')).toBeTruthy()
-    expect(screen.getByText('one-time-device-secret')).toBeTruthy()
-    expect(screen.getByText(/will not appear again/i)).toBeTruthy()
+    await waitFor(() => expect(screen.getByLabelText('current path').textContent).toBe('/doctor/dashboard'))
+    expect(screen.queryByText('Register an ESP32')).toBeNull()
   })
 
   it('keeps patient users out of professional routes', async () => {
     renderAuthenticated('/doctor/patients', 'PATIENT')
     await waitFor(() => expect(screen.getByLabelText('current path').textContent).toBe('/patient/dashboard'))
+  })
+})
+
+const mlModel: MLModel = {
+  available: true,
+  model_identifier: 'physionet-2012-icu-mortality',
+  model_version: 'icu-mortality-hr-temp-v1',
+  assessment_method: 'ML_CLASSIFIER_V1',
+  target: 'In-hospital death after the first 48 hours of an ICU stay',
+  supported_parameters: ['HEART_RATE', 'TEMPERATURE'],
+  input_window_hours: 48,
+  development_partition: 'Set A (4,000 ICU stays)',
+  held_out_partition: 'Set B (4,000 ICU stays)',
+  held_out_metrics: { roc_auc: 0.6836, pr_auc: 0.2663, recall: 0.5528 },
+  model_comparison: {
+    dummy_most_frequent: { roc_auc: 0.5, pr_auc: 0.1385, recall: 0, brier_score: 0.1385 },
+    random_forest: { roc_auc: 0.696, pr_auc: 0.2782, recall: 0.1317, brier_score: 0.1272 },
+  },
+  global_feature_importance: { Temp_mean: 0.0216, HR_count: 0.02 },
+  limitations: ['Research-only model trained on adult ICU stays; it is not clinically validated.'],
+  unavailable_reason: null,
+}
+
+const mlPrediction: MLPrediction = {
+  available: true,
+  prediction_id: 'prediction-id',
+  patient_id: patientProfile.id,
+  model_identifier: mlModel.model_identifier,
+  model_version: mlModel.model_version,
+  assessment_method: 'ML_CLASSIFIER_V1',
+  predicted_label: 'SURVIVAL',
+  probability: 0.22,
+  decision_threshold: 0.31,
+  supported_parameters: mlModel.supported_parameters,
+  input_window_hours: 48,
+  source_data: 'SIMULATED',
+  explanation: 'Research model probability 22.0%. This is not a diagnosis.',
+  limitations: mlModel.limitations,
+  window_started_at: '2026-10-01T00:00:00Z',
+  window_ended_at: '2026-10-03T00:00:00Z',
+  created_at: '2026-10-03T00:00:01Z',
+}
+
+describe('AI analytics workspace', () => {
+  it('renders real model evidence, comparison results, and the synthetic-data warning', async () => {
+    vi.spyOn(api, 'mlModel').mockResolvedValue(mlModel)
+    vi.spyOn(api, 'mlPredictions').mockResolvedValue([mlPrediction])
+    renderAuthenticated('/patient/analytics', 'PATIENT', [patientProfile])
+
+    expect(await screen.findByText('Survival')).toBeTruthy()
+    expect(screen.getByText('22.0%')).toBeTruthy()
+    expect(screen.getByText('Random Forest')).toBeTruthy()
+    expect(screen.getByText('Selected')).toBeTruthy()
+    expect(screen.getByText(/outside this model’s validation population/)).toBeTruthy()
+  })
+
+  it('keeps unavailable inference explicit instead of presenting rule-based fallback as ML', async () => {
+    vi.spyOn(api, 'mlModel').mockResolvedValue(mlModel)
+    vi.spyOn(api, 'mlPredictions').mockResolvedValue([])
+    vi.spyOn(api, 'mlPredict').mockResolvedValue({ ...mlPrediction, available: false, prediction_id: null, predicted_label: null, probability: null, source_data: null, explanation: 'ML inference unavailable: more monitoring time is needed.' })
+    renderAuthenticated('/doctor/analytics', 'HEALTHCARE_PROFESSIONAL', [patientProfile])
+
+    await userEvent.click(await screen.findByRole('button', { name: /Run research inference/ }))
+    expect(await screen.findByText(/more monitoring time is needed/)).toBeTruthy()
+    expect(screen.getByText('Unavailable')).toBeTruthy()
   })
 })

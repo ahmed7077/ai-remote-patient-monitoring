@@ -5,8 +5,8 @@ import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 import { dashboardFor, useAuth } from './auth'
 import { Brand, Loading, Shell } from './components'
 import {
-  DoctorAlerts, DoctorDashboard, DoctorDevices, DoctorPatientDetail, DoctorPatients,
-  PatientAlerts, PatientDashboard, PatientDevices, PatientTrends, PatientVitals,
+  DoctorAlerts, DoctorAnalytics, DoctorDashboard, DoctorPatientDetail, DoctorPatients,
+  PatientAlerts, PatientAnalytics, PatientDashboard, PatientTrends, PatientVitals,
 } from './dashboards'
 import type { Role } from './types'
 
@@ -105,15 +105,15 @@ export default function App() {
       <Route path="/patient/dashboard" element={<PatientDashboard />} />
       <Route path="/patient/vitals" element={<PatientVitals />} />
       <Route path="/patient/trends" element={<PatientTrends />} />
+      <Route path="/patient/analytics" element={<PatientAnalytics />} />
       <Route path="/patient/alerts" element={<PatientAlerts />} />
-      <Route path="/patient/devices" element={<PatientDevices />} />
     </Route>
     <Route element={<ProtectedLayout role="HEALTHCARE_PROFESSIONAL" />}>
       <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
       <Route path="/doctor/patients" element={<DoctorPatients />} />
       <Route path="/doctor/patients/:patientId" element={<DoctorPatientDetail />} />
+      <Route path="/doctor/analytics" element={<DoctorAnalytics />} />
       <Route path="/doctor/alerts" element={<DoctorAlerts />} />
-      <Route path="/doctor/devices" element={<DoctorDevices />} />
     </Route>
     <Route path="*" element={<AuthenticatedHome />} />
   </Routes>
