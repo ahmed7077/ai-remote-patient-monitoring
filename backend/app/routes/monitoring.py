@@ -19,6 +19,7 @@ from app.models import (
     Device,
     DeviceStatus,
     MeasurementSession,
+    MLPrediction,
     Patient,
     ProfessionalPatientAssignment,
     RiskAssessment,
@@ -34,6 +35,8 @@ from app.schemas import (
     DeviceRegistrationResponse,
     DeviceResponse,
     IngestionRequest,
+    MLModelResponse,
+    MLPredictionResponse,
     PatientCreate,
     PatientResponse,
     RiskResponse,
@@ -42,6 +45,13 @@ from app.schemas import (
 from app.security import current_user, require_role
 from app.services.demo import DemoSimulationService
 from app.services.ingestion import VitalIngestionService
+from app.services.ml_risk import (
+    ASSESSMENT_METHOD,
+    MODEL_IDENTIFIER,
+    MODEL_VERSION,
+    SUPPORTED_PARAMETERS,
+    get_ml_risk_service,
+)
 
 router = APIRouter(tags=["monitoring"])
 
@@ -270,6 +280,91 @@ def risks(
             .limit(100)
         )
     )
+
+
+@router.get("/ml/model", response_model=MLModelResponse)
+def ml_model(_: User = Depends(current_user)) -> dict[str, object]:
+    return get_ml_risk_service().model_summary()
+
+
+def prediction_response(
+    patient_id: uuid.UUID,
+    explanation: str,
+    limitations: list[str],
+    prediction: MLPrediction | None = None,
+) -> MLPredictionResponse:
+    return MLPredictionResponse(
+        available=prediction is not None,
+        prediction_id=prediction.id if prediction else None,
+        patient_id=patient_id,
+        model_identifier=MODEL_IDENTIFIER,
+        model_version=MODEL_VERSION,
+        assessment_method=ASSESSMENT_METHOD,
+        predicted_label=prediction.predicted_label if prediction else None,
+        probability=prediction.probability if prediction else None,
+        decision_threshold=(
+            prediction.decision_threshold if prediction else get_ml_risk_service().threshold
+        ),
+        supported_parameters=list(SUPPORTED_PARAMETERS),
+        input_window_hours=48,
+        source_data=prediction.source_data if prediction else None,
+        explanation=explanation,
+        limitations=limitations,
+        window_started_at=prediction.window_started_at if prediction else None,
+        window_ended_at=prediction.window_ended_at if prediction else None,
+        created_at=prediction.created_at if prediction else None,
+    )
+
+
+@router.post("/patients/{patient_id}/ml/predict", response_model=MLPredictionResponse)
+def predict_ml(
+    patient_id: uuid.UUID,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> MLPredictionResponse:
+    can_access_patient(db, user, patient_id)
+    result = get_ml_risk_service().assess(db, patient_id)
+    record_audit(
+        db,
+        "RUN_ML_INFERENCE",
+        "PATIENT",
+        user.id,
+        str(patient_id),
+        metadata={
+            "available": "true" if result.available else "false",
+            "model_version": MODEL_VERSION,
+        },
+    )
+    db.commit()
+    if result.prediction is not None:
+        db.refresh(result.prediction)
+    return prediction_response(
+        patient_id,
+        result.explanation,
+        list(result.metadata.get("limitations", [])),
+        result.prediction,
+    )
+
+
+@router.get("/patients/{patient_id}/ml/predictions", response_model=list[MLPredictionResponse])
+def ml_predictions(
+    patient_id: uuid.UUID,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[MLPredictionResponse]:
+    can_access_patient(db, user, patient_id)
+    limitations = list(get_ml_risk_service().metadata.get("limitations", []))
+    predictions = list(
+        db.scalars(
+            select(MLPrediction)
+            .where(MLPrediction.patient_id == patient_id)
+            .order_by(MLPrediction.created_at.desc())
+            .limit(100)
+        )
+    )
+    return [
+        prediction_response(patient_id, item.explanation, limitations, item) for item in predictions
+    ]
 
 
 @router.get("/patients/{patient_id}/alerts", response_model=list[AlertResponse])

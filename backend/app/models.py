@@ -155,6 +155,24 @@ class RiskAssessment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class MLPrediction(Base):
+    __tablename__ = "ml_predictions"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), index=True)
+    model_identifier: Mapped[str] = mapped_column(String(80))
+    model_version: Mapped[str] = mapped_column(String(80), index=True)
+    assessment_method: Mapped[str] = mapped_column(String(50))
+    predicted_label: Mapped[str] = mapped_column(String(80))
+    probability: Mapped[float] = mapped_column(Float)
+    decision_threshold: Mapped[float] = mapped_column(Float)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    window_ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    source_data: Mapped[str] = mapped_column(String(30))
+    feature_snapshot: Mapped[dict[str, float | None]] = mapped_column(JSON)
+    explanation: Mapped[str] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Alert(Base):
     __tablename__ = "alerts"
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

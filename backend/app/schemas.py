@@ -169,6 +169,41 @@ class RiskResponse(ORMModel):
     created_at: datetime
 
 
+class MLModelResponse(BaseModel):
+    available: bool
+    model_identifier: str
+    model_version: str
+    assessment_method: str
+    target: str
+    supported_parameters: list[str]
+    input_window_hours: int
+    development_partition: str
+    held_out_partition: str
+    held_out_metrics: dict[str, float | list[list[int]]]
+    limitations: list[str]
+    unavailable_reason: str | None = None
+
+
+class MLPredictionResponse(BaseModel):
+    available: bool
+    prediction_id: uuid.UUID | None = None
+    patient_id: uuid.UUID
+    model_identifier: str
+    model_version: str
+    assessment_method: str
+    predicted_label: str | None = None
+    probability: float | None = None
+    decision_threshold: float
+    supported_parameters: list[str]
+    input_window_hours: int
+    source_data: str | None = None
+    explanation: str
+    limitations: list[str]
+    window_started_at: datetime | None = None
+    window_ended_at: datetime | None = None
+    created_at: datetime | None = None
+
+
 class AlertResponse(ORMModel):
     id: uuid.UUID
     patient_id: uuid.UUID
