@@ -1,0 +1,3 @@
+data/raw/
+.pytest-tmp/
+!data/raw/.gitkeep
