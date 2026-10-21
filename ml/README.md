@@ -19,6 +19,10 @@ mypy src
 
 Outputs are written to `artifacts/` and `reports/generated/`. Raw records under `data/raw/` are ignored by Git. See [dataset provenance](data/README.md) for licensing, checksums, observed feature coverage, and leakage controls.
 
-The eventual application integration must require a 48-hour history with the supported schema, identify the output as an ICU research model, and keep it separate from `PROTOTYPE_RULE_BASED`. It must not present a prediction from a single simulator reading.
+The application integration is implemented in `backend/app/services/ml_risk.py`. It requires a nearly complete 48-hour history, validates units and the exact feature order, verifies the artifact checksum/version, persists provenance in `ml_predictions`, and exposes authenticated patient-scoped APIs. The React AI Analytics workspace displays actual evaluation evidence and keeps the result separate from `PROTOTYPE_RULE_BASED`.
+
+Selected held-out Set B results: ROC-AUC 0.6836, PR-AUC 0.2663, recall 0.5528, precision 0.2370, F1 0.3317, balanced accuracy 0.6291, and Brier score 0.1314. These values describe the research dataset only.
+
+See [methodology](../docs/ml-methodology.md), [results](../docs/ml-results.md), and [limitations](../docs/ml-limitations.md).
 
 **Simulator output is excluded from model training, validation, and reported performance. This model is not clinically validated and must not be used for patient care.**

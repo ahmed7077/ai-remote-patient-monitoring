@@ -279,28 +279,37 @@ and not as an automated medical diagnostic system.
 
 ---
 
-# Planned Machine Learning Evaluation
+# Implemented Machine Learning Evaluation
 
-Candidate machine-learning algorithms will be experimentally evaluated during
-the implementation phase.
+The implementation uses the PhysioNet/Computing in Cardiology Challenge 2012
+v1.0.0 dataset under ODC-By 1.0:
 
-Potential models include:
+Silva, I., Moody, G., Scott, D. J., Celi, L. A., & Mark, R. G. (2012).
+Predicting in-hospital mortality of ICU patients: The PhysioNet/Computing in
+Cardiology Challenge 2012. *Computing in Cardiology, 39*, 245–248.
+
+Dataset: https://physionet.org/content/challenge-2012/1.0.0/
+
+Executed candidates are:
 
 - Logistic Regression
-- Support Vector Machine (SVM)
 - Random Forest
-- XGBoost
+- Histogram Gradient Boosting
+- Majority-class dummy baseline
 
-The models are planned to be compared using:
+The models were compared using:
 
 - Accuracy
 - Precision
 - Recall
-- F1-Score
+- F1-score and balanced accuracy
 - ROC-AUC
+- PR-AUC and Brier score
 
-Experimental results will be added after dataset selection, preprocessing,
-model training and evaluation.
+Random forest was selected using Set A cross-validated PR-AUC and evaluated
+once on official Set B. See [methodology](../ml-methodology.md),
+[results](../ml-results.md), and [limitations](../ml-limitations.md) for the
+executed values and interpretation boundary.
 
 ---
 
