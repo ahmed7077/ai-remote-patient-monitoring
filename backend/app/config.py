@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,10 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 7
     device_stale_minutes: int = Field(default=10, ge=1, le=1440)
+    care_ai_provider: Literal["ollama", "gemini"] = "ollama"
+    care_ai_api_key: SecretStr | None = None
+    care_ai_url: str | None = None
+    care_ai_model: str | None = None
     frontend_origin: str = "http://localhost:5173"
 
 

@@ -8,14 +8,14 @@ PulseBridge keeps transport, identity, quality, and decision support separate:
 4. The session, measurements, quality states, acquisition metadata, and device last-contact time are persisted atomically.
 5. The replaceable `PrototypeRuleBasedRiskAssessmentService` creates a stored assessment and, only for actionable warning/high-risk results, an internal alert.
 6. FastAPI enforces patient linkage or professional assignment before returning data.
-7. When requested, `MLRiskAssessmentService` builds the exact 14-feature HR/temperature schema from a nearly complete 48-hour window, loads only the trusted checksum-validated artifact, and persists its separate outcome/provenance.
+7. When requested, `MLRiskAssessmentService` builds the exact 14-feature HR/temperature schema from available readings within the latest 12 hours, loads only the trusted checksum-validated artifact, and persists its separate outcome/provenance.
 8. React Query supplies the patient and professional workspaces and invalidates affected views after writes.
 
 ```text
 Synthetic simulator
   → validation + PostgreSQL
   ├─ PROTOTYPE_RULE_BASED → monitoring alerts
-  └─ eligible 48-hour HR/Temp window → ML_CLASSIFIER_V1 → research outcome
+  └─ eligible 12-hour HR/Temp window → ML_CLASSIFIER_V1 → research outcome
        → authenticated API → AI Analytics workspace
 ```
 

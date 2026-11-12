@@ -1,10 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.models import (
     Device,
     DeviceType,
@@ -20,6 +16,9 @@ from app.models import (
 )
 from app.security import hash_password
 from app.services.ml_risk import FEATURE_NAMES, MLRiskAssessmentService
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 
 def create_user(db: Session, email: str, role: Role) -> User:
@@ -66,7 +65,7 @@ def add_history(db: Session, patient: Patient) -> None:
         db.add(device)
         db.flush()
     end = datetime.now(UTC)
-    for index, hours_ago in enumerate((48, 36, 24, 12, 0)):
+    for index, hours_ago in enumerate((12, 9, 6, 3, 0)):
         session = MeasurementSession(
             patient_id=patient.id,
             device_id=device.id,
@@ -105,10 +104,11 @@ def test_model_metadata_requires_authentication_and_reports_real_metrics(
     assert response.status_code == 200
     payload = response.json()
     assert payload["available"] is True
-    assert payload["model_version"] == "icu-mortality-hr-temp-v1"
+    assert payload["model_version"] == "icu-mortality-hr-temp-v2-12h"
+    assert payload["input_window_hours"] == 12
     assert payload["supported_parameters"] == ["HEART_RATE", "TEMPERATURE"]
     assert payload["held_out_metrics"]["roc_auc"] > 0.5
-    assert payload["model_comparison"]["random_forest"]["pr_auc"] > 0.25
+    assert payload["model_comparison"]["random_forest"]["pr_auc"] > 0.13
     assert "Temp_mean" in payload["global_feature_importance"]
 
 
@@ -144,12 +144,13 @@ def test_authenticated_prediction_is_persisted_with_separate_provenance(
     assert payload["available"] is True
     assert payload["assessment_method"] == "ML_CLASSIFIER_V1"
     assert payload["predicted_label"] in {"SURVIVAL", "IN_HOSPITAL_DEATH"}
+    assert payload["input_window_hours"] == 12
     assert payload["source_data"] == "SIMULATED"
     assert payload["probability"] is not None
     assert "not a diagnosis" in payload["explanation"]
     stored = db.scalar(select(MLPrediction))
     assert stored is not None
-    assert stored.model_version == "icu-mortality-hr-temp-v1"
+    assert stored.model_version == "icu-mortality-hr-temp-v2-12h"
     assert tuple(stored.feature_snapshot) == FEATURE_NAMES
 
     history = client.get(
@@ -178,3 +179,36 @@ def test_missing_artifact_has_safe_unavailable_state() -> None:
 
     assert service.available is False
     assert service.unavailable_reason is not None
+
+
+def test_short_history_is_accepted_and_older_readings_are_excluded(db: Session) -> None:
+    patient, _, _ = setup_patient(db)
+    add_history(db, patient)
+    sessions = list(db.scalars(select(MeasurementSession).order_by(MeasurementSession.recorded_at)))
+    service = MLRiskAssessmentService()
+    sessions[0].recorded_at += timedelta(seconds=1)
+    db.commit()
+    assert service.assess(db, patient.id).available is True
+    sessions[0].recorded_at -= timedelta(seconds=1)
+    sessions[1].recorded_at -= timedelta(hours=24)
+    db.commit()
+    result = service.assess(db, patient.id)
+    assert result.available is True
+    assert result.prediction is not None
+    assert result.prediction.feature_snapshot["HR_count"] == 4
+    assert result.metadata["input_window_hours"] == 12
+
+
+def test_one_saved_session_can_produce_inference(db: Session) -> None:
+    patient, _, _ = setup_patient(db)
+    add_history(db, patient)
+    sessions = list(db.scalars(select(MeasurementSession).order_by(MeasurementSession.recorded_at)))
+    for session in sessions[:-1]:
+        db.delete(session)
+    db.commit()
+    result = MLRiskAssessmentService().assess(db, patient.id)
+    assert result.available is True
+    assert result.prediction is not None
+    assert result.prediction.feature_snapshot["HR_count"] == 1
+    assert result.prediction.feature_snapshot["HR_slope"] == 0
+    assert "0.00 hours" in result.explanation

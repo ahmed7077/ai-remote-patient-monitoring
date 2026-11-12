@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasToken && currentUser.isError) {
       api.logout()
       setHasToken(false)
-      queryClient.removeQueries({ queryKey: ['me'] })
+      queryClient.clear()
     }
   }, [currentUser.isError, hasToken, queryClient])
 
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout(): void {
     api.logout()
-    queryClient.removeQueries({ queryKey: ['me'] })
+    queryClient.clear()
     setHasToken(false)
   }
 

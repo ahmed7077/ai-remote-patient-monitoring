@@ -30,7 +30,7 @@ from sklearn.model_selection import StratifiedKFold, cross_val_predict, cross_va
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from pulsebridge_ml import MODEL_VERSION
+from pulsebridge_ml import INPUT_WINDOW_HOURS, MODEL_VERSION
 from pulsebridge_ml.dataset import Dataset, load_partition
 from pulsebridge_ml.evaluate import (
     bootstrap_intervals,
@@ -214,6 +214,7 @@ def train(data_dir: Path, artifacts_dir: Path, reports_dir: Path) -> dict[str, A
     joblib.dump(
         {
             "model_version": MODEL_VERSION,
+            "input_window_hours": INPUT_WINDOW_HOURS,
             "pipeline": selected,
             "feature_names": FEATURE_NAMES,
             "threshold": threshold,
@@ -229,10 +230,10 @@ def train(data_dir: Path, artifacts_dir: Path, reports_dir: Path) -> dict[str, A
         "dataset": "PhysioNet/Computing in Cardiology Challenge 2012 v1.0.0",
         "development_partition": "Set A (4,000 ICU stays)",
         "held_out_partition": "Set B (4,000 ICU stays)",
-        "target": "In-hospital death after the first 48 hours of the ICU stay",
+        "target": "In-hospital death after the first 12 hours of the ICU stay",
         "feature_names": FEATURE_NAMES,
         "feature_units": FEATURE_UNITS,
-        "input_window_hours": 48,
+        "input_window_hours": INPUT_WINDOW_HOURS,
         "decision_threshold": threshold,
         "training_timestamp_utc": datetime.now(UTC).isoformat(),
         "random_seed": RANDOM_SEED,
@@ -251,7 +252,7 @@ def train(data_dir: Path, artifacts_dir: Path, reports_dir: Path) -> dict[str, A
         "limitations": [
             "Research-only model trained on adult ICU stays; it is not clinically validated.",
             "It does not assess SpO2 or respiratory rate.",
-            "It requires a 48-hour heart-rate and temperature history, not one current reading.",
+            "Training uses first-12-hour summaries; predictions from shorter available histories have not been separately validated.",
             "Synthetic PulseBridge sessions are outside the validation population.",
         ],
     }

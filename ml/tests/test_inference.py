@@ -7,8 +7,8 @@ from pulsebridge_ml.features import FEATURE_NAMES
 from pulsebridge_ml.inference import ArtifactError, TrustedModel
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIFACT = ROOT / "artifacts" / "icu-mortality-hr-temp-v1.joblib"
-METADATA = ROOT / "artifacts" / "icu-mortality-hr-temp-v1.metadata.json"
+ARTIFACT = ROOT / "artifacts" / "icu-mortality-hr-temp-v2-12h.joblib"
+METADATA = ROOT / "artifacts" / "icu-mortality-hr-temp-v2-12h.metadata.json"
 
 
 def test_versioned_artifact_loads_and_predicts() -> None:
@@ -21,7 +21,7 @@ def test_versioned_artifact_loads_and_predicts() -> None:
 
     assert prediction.label in {"SURVIVAL", "IN_HOSPITAL_DEATH"}
     assert 0.0 <= prediction.probability <= 1.0
-    assert prediction.model_version == "icu-mortality-hr-temp-v1"
+    assert prediction.model_version == "icu-mortality-hr-temp-v2-12h"
 
 
 def test_inference_rejects_wrong_feature_order_length() -> None:

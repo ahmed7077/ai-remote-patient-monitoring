@@ -1,6 +1,6 @@
 # PulseBridge — Remote Patient Monitoring
 
-PulseBridge is a software-only academic remote-patient-monitoring research prototype. A clearly labelled physiological simulator drives the monitoring demonstration, while an independently trained and evaluated model provides a separate ICU mortality research outcome when a complete 48-hour input window exists.
+PulseBridge is a software-only academic remote-patient-monitoring research prototype. A clearly labelled physiological simulator drives the monitoring demonstration, while an independently trained and evaluated model provides a separate ICU mortality research outcome using available readings within the latest 12 hours.
 
 > PulseBridge is not a medical device, diagnostic system, or clinically validated model. It must not be used for clinical decisions or with real patient data.
 
@@ -27,7 +27,7 @@ Software simulator → authenticated FastAPI ingestion
         → technical quality and duplicate checks
         → PostgreSQL sessions + measurement availability/quality metadata
              ├─ prototype rule-based assessment → internal alerts
-             ├─ 48-hour HR/temperature summaries → versioned ML inference
+             ├─ 12-hour HR/temperature summaries → versioned ML inference
              └─ historical measurements and dated trends
         → role-scoped FastAPI endpoints
         → patient and healthcare-professional React workspaces
@@ -71,7 +71,7 @@ The complete Compose build, migration to revision `0003`, service startup, and h
 
 Every synthetic session is labelled `SIMULATED`. The one-click control uses the real server pipeline but is restricted to an assigned healthcare professional.
 
-The AI page will report inference as unavailable until the patient has a nearly complete 48-hour heart-rate and temperature history. It never substitutes the rule-based result while calling it ML.
+The AI page can run on saved heart-rate and temperature readings within the latest 12 hours, without waiting for a full window. It never substitutes the rule-based result while calling it ML.
 
 ## Development checks
 
@@ -114,3 +114,37 @@ More detail: [API and security](docs/api-security.md), [architecture](docs/archi
 | Muhammad Ahmed | 20231ISE0061 |
 
 Literature sources are tracked in [docs/literature-review/references.md](docs/literature-review/references.md).
+
+## Care workspace and AI drafting
+
+On an assigned patient's record, a clinician can create a clinician-only note, create a dated follow-up, or publish a patient summary. The author owns the follow-up, and the clinician Follow-ups page shows open tasks by due date. The patient Care summary page shows only published summaries, with precautions entered by the clinician and shown verbatim.
+
+AI drafting is optional and uses an Ollama-compatible server on your own machine or private network. It sends only the text entered in **Review observations**, not the patient record, vital signs, or precautions. Use a locally installed model and omit identifiers from that text. Set these values in your local `.env` to enable it:
+
+```dotenv
+CARE_AI_URL=http://host.docker.internal:11434
+CARE_AI_MODEL=<name of an installed local Ollama model>
+```
+
+The draft is editable and remains private until a clinician explicitly approves and publishes it. Manual summaries work without a model server. Rebuild the backend and frontend to apply the update; backend startup applies migration `0004` to the existing database.
+
+
+### Hosted drafting for demos
+
+To use Gemini without downloading a local model, create a key in [Google AI Studio](https://aistudio.google.com/apikey), then add these settings to your local `.env`:
+
+```dotenv
+CARE_AI_PROVIDER=gemini
+CARE_AI_MODEL=gemini-3.5-flash
+CARE_AI_API_KEY=<your Gemini API key>
+```
+
+Use fictional review text for hosted demos. Only **Review observations** is sent to the provider. Keep the key out of Git and chat. After a settings-only change, recreate the backend so it rereads `.env`:
+
+```powershell
+docker compose up -d --no-deps --no-build --force-recreate backend
+```
+
+### Interface
+
+The earthy PulseBridge palette pairs emerald and lake blue with sage and stone. Sign-in and registration use horizontal flowing waves; the workspace navigation uses vertical waves. Both respect the device's reduced-motion setting. Dashboard cards show mini trends, alerts retain generation timestamps, and clinician notes and published care summaries are kept separate.

@@ -204,3 +204,17 @@ class RefreshToken(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class CareEntry(Base):
+    __tablename__ = "care_entries"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), index=True)
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    author_name: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(16))
+    body: Mapped[str] = mapped_column(String(4000))
+    precautions: Mapped[str | None] = mapped_column(String(4000))
+    due_date: Mapped[str | None] = mapped_column(String(10))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

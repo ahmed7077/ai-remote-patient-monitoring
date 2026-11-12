@@ -1,0 +1,135 @@
+{
+  "model_identifier": "physionet-2012-icu-mortality",
+  "model_version": "icu-mortality-hr-temp-v2-12h",
+  "selected_model": "random_forest",
+  "dataset": "PhysioNet/Computing in Cardiology Challenge 2012 v1.0.0",
+  "development_partition": "Set A (4,000 ICU stays)",
+  "held_out_partition": "Set B (4,000 ICU stays)",
+  "target": "In-hospital death after the first 12 hours of the ICU stay",
+  "feature_names": [
+    "HR_minimum",
+    "HR_maximum",
+    "HR_mean",
+    "HR_std",
+    "HR_last",
+    "HR_slope",
+    "HR_count",
+    "Temp_minimum",
+    "Temp_maximum",
+    "Temp_mean",
+    "Temp_std",
+    "Temp_last",
+    "Temp_slope",
+    "Temp_count"
+  ],
+  "feature_units": {
+    "HR": "beats/min",
+    "Temp": "degrees Celsius"
+  },
+  "input_window_hours": 12,
+  "decision_threshold": 0.30499999999999994,
+  "training_timestamp_utc": "2026-10-23T17:15:23.025377+00:00",
+  "random_seed": 7077,
+  "library_versions": {
+    "python": "3.13.5",
+    "numpy": "2.4.2",
+    "scikit_learn": "1.8.0",
+    "joblib": "1.5.3",
+    "matplotlib": "3.10.8"
+  },
+  "cross_validation": {
+    "dummy_most_frequent": {
+      "balanced_accuracy": 0.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.5,
+      "pr_auc": 0.1385,
+      "brier_score": 0.1385
+    },
+    "logistic_regression": {
+      "balanced_accuracy": 0.5564159584586165,
+      "precision": 0.16663080691146895,
+      "recall": 0.5794594594594594,
+      "f1": 0.25876579693632074,
+      "roc_auc": 0.5921302328619802,
+      "pr_auc": 0.19492975401346246,
+      "brier_score": 0.24098027852564746
+    },
+    "random_forest": {
+      "balanced_accuracy": 0.5284402326568036,
+      "precision": 0.2866614500051033,
+      "recall": 0.0975102375102375,
+      "f1": 0.14492054803294369,
+      "roc_auc": 0.6286293676318288,
+      "pr_auc": 0.2181188599749214,
+      "brier_score": 0.13733109127146995
+    },
+    "hist_gradient_boosting": {
+      "balanced_accuracy": 0.5553940431709095,
+      "precision": 0.21204849076332452,
+      "recall": 0.27619983619983624,
+      "f1": 0.2398360638805713,
+      "roc_auc": 0.5995986975576804,
+      "pr_auc": 0.19605794522082237,
+      "brier_score": 0.17259493033902001
+    }
+  },
+  "held_out_metrics": {
+    "accuracy": 0.6595,
+    "balanced_accuracy": 0.6047022226599692,
+    "precision": 0.2152080344332855,
+    "recall": 0.528169014084507,
+    "f1": 0.3058103975535168,
+    "roc_auc": 0.6488830271840835,
+    "pr_auc": 0.2286207052137209,
+    "brier_score": 0.13711935583572166,
+    "confusion_matrix": [
+      [
+        2338,
+        1094
+      ],
+      [
+        268,
+        300
+      ]
+    ]
+  },
+  "held_out_95_percent_confidence_intervals": {
+    "roc_auc": [
+      0.6251447381816064,
+      0.6740832050063486
+    ],
+    "pr_auc": [
+      0.20514582753326385,
+      0.2592879756693268
+    ],
+    "recall": [
+      0.48623774122113256,
+      0.5669031851660421
+    ]
+  },
+  "permutation_importance": {
+    "HR_last": -0.005017568370371916,
+    "HR_slope": -0.00444192575910711,
+    "Temp_mean": -0.0009585729443621655,
+    "Temp_slope": -0.000547975972850856,
+    "Temp_minimum": -0.0002346951242360229,
+    "HR_mean": -7.269262776133379e-05,
+    "HR_maximum": 0.000851256578596718,
+    "HR_minimum": 0.0017106533102539483,
+    "HR_std": 0.002364109059608377,
+    "Temp_maximum": 0.002516164611777688,
+    "Temp_std": 0.0043349626297760875,
+    "HR_count": 0.004798962251001388,
+    "Temp_count": 0.006138883734253251,
+    "Temp_last": 0.01285030895928703
+  },
+  "artifact_sha256": "e8392ca8cd5c2cef6dcaedf989d9d4c4278dd733d9a26a89e02c6116149d0af1",
+  "limitations": [
+    "Research-only model trained on adult ICU stays; it is not clinically validated.",
+    "It does not assess SpO2 or respiratory rate.",
+    "Training uses first-12-hour summaries; predictions from shorter available histories have not been separately validated.",
+    "Synthetic PulseBridge sessions are outside the validation population."
+  ]
+}

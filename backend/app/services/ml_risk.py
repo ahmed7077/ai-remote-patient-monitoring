@@ -12,13 +12,14 @@ from typing import Any
 
 import joblib  # type: ignore[import-untyped]
 import numpy as np
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import MeasurementSession, MLPrediction, QualityStatus, VitalType
 
 MODEL_IDENTIFIER = "physionet-2012-icu-mortality"
-MODEL_VERSION = "icu-mortality-hr-temp-v1"
+MODEL_VERSION = "icu-mortality-hr-temp-v2-12h"
+INPUT_WINDOW_HOURS = 12
 ASSESSMENT_METHOD = "ML_CLASSIFIER_V1"
 SUPPORTED_PARAMETERS = ("HEART_RATE", "TEMPERATURE")
 STATISTICS = ("minimum", "maximum", "mean", "std", "last", "slope", "count")
@@ -70,8 +71,8 @@ class MLRiskAssessmentService:
         self.metadata: dict[str, Any] = {
             "model_identifier": MODEL_IDENTIFIER,
             "model_version": MODEL_VERSION,
-            "target": "In-hospital death after the first 48 hours of an ICU stay",
-            "input_window_hours": 48,
+            "target": "In-hospital death after the first 12 hours of an ICU stay",
+            "input_window_hours": INPUT_WINDOW_HOURS,
             "held_out_metrics": {},
             "limitations": ["The trusted model artifact is unavailable."],
         }
@@ -88,6 +89,8 @@ class MLRiskAssessmentService:
             raise MLArtifactError("Unexpected model identifier")
         if metadata.get("model_version") != MODEL_VERSION:
             raise MLArtifactError("Model metadata version mismatch")
+        if metadata.get("input_window_hours") != INPUT_WINDOW_HOURS:
+            raise MLArtifactError("Model input window mismatch")
         if metadata.get("artifact_sha256") != sha256(artifact_path):
             raise MLArtifactError("Model artifact checksum mismatch")
         payload: dict[str, Any] = joblib.load(artifact_path)
@@ -95,6 +98,8 @@ class MLRiskAssessmentService:
             raise MLArtifactError("Serialized model version mismatch")
         if tuple(payload.get("feature_names", ())) != FEATURE_NAMES:
             raise MLArtifactError("Serialized feature schema mismatch")
+        if payload.get("input_window_hours") != INPUT_WINDOW_HOURS:
+            raise MLArtifactError("Serialized model input window mismatch")
         self.metadata = metadata
         self.pipeline = payload["pipeline"]
         self.threshold = float(payload["threshold"])
@@ -128,33 +133,37 @@ class MLRiskAssessmentService:
                 ),
                 self.metadata,
             )
+        latest = db.scalar(
+            select(func.max(MeasurementSession.recorded_at)).where(
+                MeasurementSession.patient_id == patient_id
+            )
+        )
+        if latest is None:
+            return self._insufficient("No persisted monitoring sessions are available.")
+        window_ended_at = utc(latest)
+        cutoff = window_ended_at - timedelta(hours=INPUT_WINDOW_HOURS)
         sessions = list(
             db.scalars(
                 select(MeasurementSession)
                 .options(selectinload(MeasurementSession.measurements))
-                .where(MeasurementSession.patient_id == patient_id)
+                .where(
+                    MeasurementSession.patient_id == patient_id,
+                    MeasurementSession.recorded_at >= cutoff,
+                    MeasurementSession.recorded_at <= window_ended_at,
+                )
                 .order_by(MeasurementSession.recorded_at.desc())
-                .limit(1000)
             )
         )
-        if not sessions:
-            return self._insufficient("No persisted monitoring sessions are available.")
-        window_ended_at = max(utc(item.recorded_at) for item in sessions)
-        cutoff = window_ended_at - timedelta(hours=48)
         window = [item for item in sessions if cutoff <= utc(item.recorded_at) <= window_ended_at]
         window_started_at = min(utc(item.recorded_at) for item in window)
-        if window_ended_at - window_started_at < timedelta(hours=47):
-            return self._insufficient(
-                "A nearly complete 48-hour history is required; more monitoring time is needed."
-            )
         observations = self._observations(window)
         counts = {
             parameter: sum(item.parameter == parameter for item in observations)
             for parameter in ("HR", "Temp")
         }
-        if any(count < 2 for count in counts.values()):
+        if any(count < 1 for count in counts.values()):
             return self._insufficient(
-                "At least two technically valid heart-rate and temperature "
+                "At least one technically valid heart-rate and one temperature "
                 "measurements are required."
             )
         features = self._summarize(observations, window_started_at)
@@ -166,9 +175,13 @@ class MLRiskAssessmentService:
         label = "IN_HOSPITAL_DEATH" if probability >= self.threshold else "SURVIVAL"
         sources = {item.source for item in window}
         source_data = sources.pop() if len(sources) == 1 else "MIXED"
+        span_hours = (window_ended_at - window_started_at).total_seconds() / 3600
         explanation = (
-            f"Research model probability {probability:.1%} using 48-hour heart-rate and "
-            "temperature summaries. This is an ICU research outcome, not a diagnosis or "
+            f"Research model probability {probability:.1%} using available readings "
+            f"({counts['HR']} heart-rate, {counts['Temp']} temperature; "
+            f"{span_hours:.2f} hours of history) within the latest 12-hour window. "
+            "Short or sparse histories differ from the training inputs. "
+            "This is an ICU research outcome, not a diagnosis or "
             "real-time clinical risk category."
         )
         prediction = MLPrediction(

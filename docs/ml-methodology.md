@@ -2,13 +2,13 @@
 
 ## Research question
 
-PulseBridge evaluates whether summaries of heart rate and temperature observed during the first 48 hours of an adult ICU stay can support binary classification of eventual in-hospital death. This is an outcome-classification research task, not a real-time deterioration forecast and not a diagnosis.
+PulseBridge evaluates whether summaries of heart rate and temperature observed during the first 12 hours of an adult ICU stay can support binary classification of eventual in-hospital death. This is an outcome-classification research task, not a real-time deterioration forecast and not a diagnosis.
 
 ## Dataset and provenance
 
 The source is the open **PhysioNet/Computing in Cardiology Challenge 2012 v1.0.0**, licensed under ODC-By 1.0. The official Set A contains 4,000 stays with 554 deaths (13.85%); official Set B contains 4,000 stays with 568 deaths. Patient record identifiers define independent stays. Acquisition, file expectations, licensing, checksums, and the data dictionary are documented in [`ml/data/README.md`](../ml/data/README.md).
 
-Observed Set A coverage showed that no honest four-vital complete-case task was practical: heart rate appeared in 3,937 records, temperature in 3,936, SpO₂ in 1,792, respiratory rate in 1,101, and only 171 records contained all four. The implemented task therefore uses HR and temperature only. No missing physiological channel or outcome was manufactured.
+Historical full-48-hour Set A coverage showed that no honest four-vital complete-case task was practical: heart rate appeared in 3,937 records, temperature in 3,936, SpO₂ in 1,792, respiratory rate in 1,101, and only 171 records contained all four. The implemented task therefore uses HR and temperature only. No missing physiological channel or outcome was manufactured.
 
 ## Features
 
@@ -25,13 +25,13 @@ For each of HR and temperature, the pipeline calculates minimum, maximum, mean, 
 
 ## Candidates and selection
 
-The executed comparison includes `DummyClassifier` (majority), logistic regression, random forest, and `HistGradientBoostingClassifier`. PR-AUC is the primary selection measure because death is the minority outcome. ROC-AUC, balanced accuracy, precision, recall, F1, and Brier score provide complementary evidence. Random forest had the strongest Set A cross-validated PR-AUC (0.2782) and was selected. Its decision threshold (0.31) was chosen from Set A out-of-fold predictions, not Set B.
+The executed comparison includes `DummyClassifier` (majority), logistic regression, random forest, and `HistGradientBoostingClassifier`. PR-AUC is the primary selection measure because death is the minority outcome. ROC-AUC, balanced accuracy, precision, recall, F1, and Brier score provide complementary evidence. The selected model is `random_forest`, with threshold 0.30 selected from Set A out-of-fold predictions. See the generated metrics for the full comparison.
 
 ## Artifact and inference
 
-The trusted artifact is `ml/artifacts/icu-mortality-hr-temp-v1.joblib`; a deployable copy is packaged under `backend/app/ml_artifacts/`. Metadata records the dataset, target, feature schema, units, training timestamp, library versions, threshold, metrics, limitations, and SHA-256 checksum. FastAPI loads it once, rejects checksum/version/schema mismatches, and never deserializes user uploads.
+The trusted artifact is `ml/artifacts/icu-mortality-hr-temp-v2-12h.joblib`; a deployable copy is packaged under `backend/app/ml_artifacts/`. Metadata records the dataset, target, feature schema, units, training timestamp, library versions, threshold, metrics, limitations, and SHA-256 checksum. FastAPI loads it once, rejects checksum/version/schema mismatches, and never deserializes user uploads.
 
-At runtime, inference requires at least two technically valid HR and temperature values spanning at least 47 hours within the latest 48-hour window. The stored record includes method `ML_CLASSIFIER_V1`, model version, actual label terminology, probability, threshold, time window, source, feature snapshot, and explanation. The rule-based method remains `PROTOTYPE_RULE_BASED` in a different table and API.
+At runtime, inference requires at least one technically valid value for each of HR and temperature within the latest 12-hour window; it does not require a full 12-hour span. The stored record includes method `ML_CLASSIFIER_V1`, model version, actual label terminology, probability, threshold, time window, source, feature snapshot, and explanation. The rule-based method remains `PROTOTYPE_RULE_BASED` in a different table and API.
 
 ## Reproduction
 

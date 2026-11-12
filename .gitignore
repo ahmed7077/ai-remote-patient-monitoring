@@ -242,3 +242,6 @@ coverage/
 .pioenvs/
 .piolibdeps/
 firmware/**/include/pulsebridge_config.h
+
+# Local test working directories
+.pytest-tmp/

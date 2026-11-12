@@ -52,6 +52,19 @@ afterEach(() => {
 })
 
 describe('authentication navigation', () => {
+  it.each(['/login', '/register'])('reveals and hides the entered password on %s', async path => {
+    vi.spyOn(api, 'hasToken').mockReturnValue(false)
+    renderApp(path)
+    const password = screen.getByLabelText<HTMLInputElement>('Password')
+    await userEvent.type(password, 'a-private-passphrase')
+    expect(password.type).toBe('password')
+    await userEvent.click(screen.getByRole('button', { name: 'Show password' }))
+    expect(password.type).toBe('text')
+    expect(password.value).toBe('a-private-passphrase')
+    await userEvent.click(screen.getByRole('button', { name: 'Hide password' }))
+    expect(password.type).toBe('password')
+  })
+
   it('redirects a successful patient login to the patient dashboard', async () => {
     vi.spyOn(api, 'hasToken').mockReturnValue(false)
     vi.spyOn(api, 'login').mockResolvedValue({

@@ -1,11 +1,11 @@
 {
   "model_identifier": "physionet-2012-icu-mortality",
-  "model_version": "icu-mortality-hr-temp-v1",
+  "model_version": "icu-mortality-hr-temp-v2-12h",
   "selected_model": "random_forest",
   "dataset": "PhysioNet/Computing in Cardiology Challenge 2012 v1.0.0",
   "development_partition": "Set A (4,000 ICU stays)",
   "held_out_partition": "Set B (4,000 ICU stays)",
-  "target": "In-hospital death after the first 48 hours of the ICU stay",
+  "target": "In-hospital death after the first 12 hours of the ICU stay",
   "feature_names": [
     "HR_minimum",
     "HR_maximum",
@@ -26,9 +26,9 @@
     "HR": "beats/min",
     "Temp": "degrees Celsius"
   },
-  "input_window_hours": 48,
-  "decision_threshold": 0.30999999999999994,
-  "training_timestamp_utc": "2026-10-21T17:32:50.218682+00:00",
+  "input_window_hours": 12,
+  "decision_threshold": 0.30499999999999994,
+  "training_timestamp_utc": "2026-10-23T17:15:23.025377+00:00",
   "random_seed": 7077,
   "library_versions": {
     "python": "3.13.5",
@@ -48,88 +48,88 @@
       "brier_score": 0.1385
     },
     "logistic_regression": {
-      "balanced_accuracy": 0.5936609884435973,
-      "precision": 0.19568817497387198,
-      "recall": 0.5523832923832924,
-      "f1": 0.2889108322361011,
-      "roc_auc": 0.6297467377828329,
-      "pr_auc": 0.22954003919179122,
-      "brier_score": 0.2336147387268787
+      "balanced_accuracy": 0.5564159584586165,
+      "precision": 0.16663080691146895,
+      "recall": 0.5794594594594594,
+      "f1": 0.25876579693632074,
+      "roc_auc": 0.5921302328619802,
+      "pr_auc": 0.19492975401346246,
+      "brier_score": 0.24098027852564746
     },
     "random_forest": {
-      "balanced_accuracy": 0.5502007102417275,
-      "precision": 0.4064937967524174,
-      "recall": 0.13174447174447174,
-      "f1": 0.19727910179486405,
-      "roc_auc": 0.6960090197071329,
-      "pr_auc": 0.2781718136773043,
-      "brier_score": 0.12718872910047022
+      "balanced_accuracy": 0.5284402326568036,
+      "precision": 0.2866614500051033,
+      "recall": 0.0975102375102375,
+      "f1": 0.14492054803294369,
+      "roc_auc": 0.6286293676318288,
+      "pr_auc": 0.2181188599749214,
+      "brier_score": 0.13733109127146995
     },
     "hist_gradient_boosting": {
-      "balanced_accuracy": 0.608188320263792,
-      "precision": 0.2888779645886029,
-      "recall": 0.3574119574119574,
-      "f1": 0.31903921859548134,
-      "roc_auc": 0.6728160381105418,
-      "pr_auc": 0.2693567554821032,
-      "brier_score": 0.15203511568010136
+      "balanced_accuracy": 0.5553940431709095,
+      "precision": 0.21204849076332452,
+      "recall": 0.27619983619983624,
+      "f1": 0.2398360638805713,
+      "roc_auc": 0.5995986975576804,
+      "pr_auc": 0.19605794522082237,
+      "brier_score": 0.17259493033902001
     }
   },
   "held_out_metrics": {
-    "accuracy": 0.68375,
-    "balanced_accuracy": 0.6291182409140156,
-    "precision": 0.2369811320754717,
-    "recall": 0.5528169014084507,
-    "f1": 0.33174854727945063,
-    "roc_auc": 0.6836161930792213,
-    "pr_auc": 0.2663107867513321,
-    "brier_score": 0.13143259232133744,
+    "accuracy": 0.6595,
+    "balanced_accuracy": 0.6047022226599692,
+    "precision": 0.2152080344332855,
+    "recall": 0.528169014084507,
+    "f1": 0.3058103975535168,
+    "roc_auc": 0.6488830271840835,
+    "pr_auc": 0.2286207052137209,
+    "brier_score": 0.13711935583572166,
     "confusion_matrix": [
       [
-        2421,
-        1011
+        2338,
+        1094
       ],
       [
-        254,
-        314
+        268,
+        300
       ]
     ]
   },
   "held_out_95_percent_confidence_intervals": {
     "roc_auc": [
-      0.6591422119544719,
-      0.7071387595747003
+      0.6251447381816064,
+      0.6740832050063486
     ],
     "pr_auc": [
-      0.2376406038953414,
-      0.3031434755395025
+      0.20514582753326385,
+      0.2592879756693268
     ],
     "recall": [
-      0.5094174114531612,
-      0.5928105407523511
+      0.48623774122113256,
+      0.5669031851660421
     ]
   },
   "permutation_importance": {
-    "Temp_slope": -0.0035061790674795258,
-    "HR_slope": 0.0004046155872357571,
-    "Temp_count": 0.0005685209257526747,
-    "Temp_last": 0.0018494731712917433,
-    "Temp_std": 0.0021520463182967075,
-    "Temp_maximum": 0.004740286862811516,
-    "Temp_minimum": 0.005152597681794363,
-    "HR_maximum": 0.005609497368828093,
-    "HR_last": 0.005807123482668203,
-    "HR_minimum": 0.006298774579593214,
-    "HR_mean": 0.006631096117003643,
-    "HR_std": 0.013062703716625056,
-    "HR_count": 0.01995350630066522,
-    "Temp_mean": 0.021580856675150008
+    "HR_last": -0.005017568370371916,
+    "HR_slope": -0.00444192575910711,
+    "Temp_mean": -0.0009585729443621655,
+    "Temp_slope": -0.000547975972850856,
+    "Temp_minimum": -0.0002346951242360229,
+    "HR_mean": -7.269262776133379e-05,
+    "HR_maximum": 0.000851256578596718,
+    "HR_minimum": 0.0017106533102539483,
+    "HR_std": 0.002364109059608377,
+    "Temp_maximum": 0.002516164611777688,
+    "Temp_std": 0.0043349626297760875,
+    "HR_count": 0.004798962251001388,
+    "Temp_count": 0.006138883734253251,
+    "Temp_last": 0.01285030895928703
   },
-  "artifact_sha256": "b8ac7bc41197a6516a4484064889ec3451ac753152f62d7a6f1bbd6fbee6b523",
+  "artifact_sha256": "e8392ca8cd5c2cef6dcaedf989d9d4c4278dd733d9a26a89e02c6116149d0af1",
   "limitations": [
     "Research-only model trained on adult ICU stays; it is not clinically validated.",
     "It does not assess SpO2 or respiratory rate.",
-    "It requires a 48-hour heart-rate and temperature history, not one current reading.",
+    "Training uses first-12-hour summaries; predictions from shorter available histories have not been separately validated.",
     "Synthetic PulseBridge sessions are outside the validation population."
   ]
 }

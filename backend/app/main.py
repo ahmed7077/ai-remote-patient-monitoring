@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routes.auth import router as auth_router
+from app.routes.care import router as care_router
 from app.routes.monitoring import router as monitoring_router
 
 settings = get_settings()
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(monitoring_router, prefix=settings.api_prefix)
+app.include_router(care_router, prefix=settings.api_prefix)
 
 
 @app.exception_handler(Exception)

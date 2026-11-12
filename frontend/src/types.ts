@@ -64,3 +64,20 @@ export interface MLPrediction {
   window_ended_at: string | null
   created_at: string | null
 }
+export interface CareEntry {
+  id: string
+  kind: 'note' | 'follow_up' | 'summary'
+  body: string
+  precautions: string | null
+  due_date: string | null
+  author_name: string
+  created_at: string
+  completed_at: string | null
+}
+export interface CareInput {
+  kind: CareEntry['kind']
+  body: string
+  precautions?: string
+  approved?: boolean
+  due_date?: string
+}

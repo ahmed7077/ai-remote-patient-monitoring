@@ -12,7 +12,7 @@ PulseBridge uses **Predicting Mortality of ICU Patients: The PhysioNet/Computing
 - Available labelled partitions used here: Set A (4,000 stays) and Set B (4,000 stays)
 - Subject identifier: `RecordID`; the publication describes the first available ICU stay for each selected patient
 - Genuine target: `In-hospital_death` (`0` survived hospitalization, `1` died in hospital)
-- Observation window: the first 48 hours after ICU admission
+- Source records: the first 48 hours after ICU admission; the current model uses only minutes 0–720 (the first 12 hours)
 
 The PulseBridge model intentionally uses only `HR` (heart rate, beats/min) and `Temp` (temperature, °C). Set A inspection found HR in 3,937/4,000 stays and temperature in 3,936/4,000 stays. Although the dataset also contains `SaO2` and `RespRate`, they occur in only 1,792 and 1,101 Set A stays respectively; just 171 stays contain all four PulseBridge vital families. Training a nominal four-vital model would therefore create a misleading completeness claim and a severe mismatch with the fully populated simulator.
 
@@ -55,4 +55,4 @@ For each supported vital, the pipeline calculates minimum, maximum, mean, standa
 - Each record contains one patient’s first available ICU stay, preventing cross-partition patient leakage under the published sampling design.
 - The cohort is historical, adult, ICU-based, and highly imbalanced; it does not represent general remote-monitoring patients.
 - Missingness and observation frequency can encode clinical workflow as well as physiology.
-- The output is a research estimate of in-hospital mortality after a 48-hour ICU observation window. It is not contemporaneous vital status, diagnosis, or a claim of future deterioration in PulseBridge users.
+- The output is a research estimate of in-hospital mortality after a 12-hour ICU observation window. It is not contemporaneous vital status, diagnosis, or a claim of future deterioration in PulseBridge users.

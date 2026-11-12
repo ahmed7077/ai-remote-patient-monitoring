@@ -63,3 +63,16 @@ def test_negative_missing_sentinel_is_ignored(tmp_path: Path) -> None:
 
     assert np.isnan(features[:6]).all()
     assert features[6] == 0.0
+
+
+def test_record_excludes_readings_after_twelve_hours(tmp_path: Path) -> None:
+    record = tmp_path / "100.txt"
+    record.write_text(
+        "Time,Parameter,Value\n00:00,HR,60\n12:00,HR,80\n12:01,HR,200\n48:00,Temp,40\n",
+        encoding="utf-8",
+    )
+    features = read_record(record)
+    assert features[0] == 60
+    assert features[1] == 80
+    assert features[6] == 2
+    assert features[13] == 0

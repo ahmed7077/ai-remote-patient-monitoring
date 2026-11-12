@@ -1,3 +1,5 @@
+> Historical 48-hour model evidence. These metrics do not describe the current 12-hour model; see `ml/reports/generated/metrics.json` for the retrained model.
+
 # PulseBridge research paper metrics pack
 
 ## Evidence boundary

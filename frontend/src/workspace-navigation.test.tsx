@@ -29,6 +29,18 @@ function renderAuthenticated(path: string, role: Role, patients: Patient[] = [])
 afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('patient workspace navigation', () => {
+  it('shows the published summary and clinician precautions without displaying internal notes', async () => {
+    const created_at = '2026-10-09T10:00:00Z'
+    vi.spyOn(api, 'care').mockResolvedValue([
+      { id: 'note', kind: 'note', body: 'Internal note', author_name: 'Clinician', precautions: null, due_date: null, created_at, completed_at: null },
+      { id: 'summary', kind: 'summary', body: 'Your clinician reviewed your recent readings.', author_name: 'Clinician', precautions: 'Follow the instructions discussed at your review.', due_date: null, created_at, completed_at: null },
+    ])
+    renderAuthenticated('/patient/summary', 'PATIENT', [patientProfile])
+    expect(await screen.findByText('Your clinician reviewed your recent readings.')).toBeTruthy()
+    expect(screen.getByText('Follow the instructions discussed at your review.')).toBeTruthy()
+    expect(screen.queryByText('Internal note')).toBeNull()
+  })
+
   it.each([
     ['/patient/dashboard', 'No patient profile linked'],
     ['/patient/vitals', 'No measurements yet'],
@@ -60,6 +72,7 @@ describe('patient workspace navigation', () => {
   })
 
   it('shows dated four-metric trends without sharing incompatible axes', async () => {
+    vi.spyOn(api, 'alerts').mockResolvedValue([])
     Object.defineProperty(window, 'matchMedia', { configurable: true, value: vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) })
     vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
     const sessions: Session[] = ['2026-10-08T10:00:00Z', '2026-10-09T10:00:00Z'].map((recorded_at, index) => ({
@@ -79,6 +92,28 @@ describe('patient workspace navigation', () => {
     await userEvent.click(respiratory)
     expect(respiratory.getAttribute('aria-selected')).toBe('true')
     expect(screen.getByText('Physical ESP32 data')).toBeTruthy()
+  })
+
+  it('filters the alert inbox and shows the saved triggering reading', async () => {
+    const created = '2026-10-09T10:00:00Z'
+    vi.spyOn(api, 'alerts').mockResolvedValue([
+      { id: 'alert-1', patient_id: patientProfile.id, session_id: 'reading-1', severity: 'WARNING', message: 'Review elevated heart rate', created_at: created, acknowledged: false, acknowledged_at: null, acknowledged_by: null },
+      { id: 'alert-2', patient_id: patientProfile.id, session_id: 'reading-2', severity: 'HIGH_RISK', message: 'Review critical reading', created_at: created, acknowledged: true, acknowledged_at: created, acknowledged_by: 'reviewer' },
+    ])
+    vi.spyOn(api, 'sessions').mockResolvedValue([
+      { id: 'reading-1', patient_id: patientProfile.id, device_id: 'device-id', recorded_at: created, received_at: created, source: 'SIMULATED', measurements: [{ vital_type: 'HEART_RATE', value: 112, unit: 'bpm', quality_status: 'VALID' }] },
+    ])
+    renderAuthenticated('/patient/alerts', 'PATIENT', [patientProfile])
+    await screen.findByText('Review critical reading')
+    await userEvent.selectOptions(screen.getByLabelText('Review status'), 'OPEN')
+    expect(screen.queryByText('Review critical reading')).toBeNull()
+    expect(screen.getByText(/Needs review · Generated/).querySelector('time')?.dateTime).toBe(created)
+    // The test DOM does not implement the native modal methods.
+    const dialog = document.querySelector('dialog')!
+    Object.defineProperty(dialog, 'showModal', { value: () => { dialog.open = true } })
+    await userEvent.click(screen.getByRole('button', { name: 'View details' }))
+    expect(await screen.findByText('112 bpm · Valid')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Acknowledge alert' })).toBeNull()
   })
 })
 
@@ -125,11 +160,11 @@ describe('professional workspace', () => {
 const mlModel: MLModel = {
   available: true,
   model_identifier: 'physionet-2012-icu-mortality',
-  model_version: 'icu-mortality-hr-temp-v1',
+  model_version: 'icu-mortality-hr-temp-v2-12h',
   assessment_method: 'ML_CLASSIFIER_V1',
-  target: 'In-hospital death after the first 48 hours of an ICU stay',
+  target: 'In-hospital death after the first 12 hours of an ICU stay',
   supported_parameters: ['HEART_RATE', 'TEMPERATURE'],
-  input_window_hours: 48,
+  input_window_hours: 12,
   development_partition: 'Set A (4,000 ICU stays)',
   held_out_partition: 'Set B (4,000 ICU stays)',
   held_out_metrics: { roc_auc: 0.6836, pr_auc: 0.2663, recall: 0.5528 },
@@ -153,12 +188,12 @@ const mlPrediction: MLPrediction = {
   probability: 0.22,
   decision_threshold: 0.31,
   supported_parameters: mlModel.supported_parameters,
-  input_window_hours: 48,
+  input_window_hours: 12,
   source_data: 'SIMULATED',
   explanation: 'Research model probability 22.0%. This is not a diagnosis.',
   limitations: mlModel.limitations,
   window_started_at: '2026-10-01T00:00:00Z',
-  window_ended_at: '2026-10-03T00:00:00Z',
+  window_ended_at: '2026-10-01T12:00:00Z',
   created_at: '2026-10-03T00:00:01Z',
 }
 

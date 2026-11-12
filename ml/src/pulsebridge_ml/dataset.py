@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
+from pulsebridge_ml import INPUT_WINDOW_HOURS
 from pulsebridge_ml.features import FEATURE_NAMES, Observation, summarize
 
 
@@ -27,9 +28,10 @@ def read_record(path: Path) -> np.ndarray:
         for row in csv.DictReader(handle):
             parameter = row["Parameter"]
             value = float(row["Value"])
-            if value < 0:
+            minute = parse_elapsed_minutes(row["Time"])
+            if value < 0 or not 0 <= minute <= INPUT_WINDOW_HOURS * 60:
                 continue
-            observations.append(Observation(parse_elapsed_minutes(row["Time"]), parameter, value))
+            observations.append(Observation(minute, parameter, value))
     return summarize(observations)
 
 

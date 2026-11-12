@@ -1,3 +1,4 @@
+import { ClipboardCheck, FileText } from 'lucide-react'
 import {
   Activity, AlertOctagon, AlertTriangle, Bell, BrainCircuit, CheckCircle2, FlaskConical,
   HeartPulse, LayoutDashboard, LineChart, LogOut, Menu, Radio, ShieldCheck,
@@ -68,6 +69,7 @@ type NavItem = { label: string; to: string; Icon: LucideIcon }
 const navigation: Record<Role, NavItem[]> = {
   PATIENT: [
     { label: 'Overview', to: '/patient/dashboard', Icon: LayoutDashboard },
+    { label: 'Care summary', to: '/patient/summary', Icon: FileText },
     { label: 'Vitals', to: '/patient/vitals', Icon: HeartPulse },
     { label: 'Trends', to: '/patient/trends', Icon: LineChart },
     { label: 'AI analytics', to: '/patient/analytics', Icon: BrainCircuit },
@@ -75,6 +77,7 @@ const navigation: Record<Role, NavItem[]> = {
   ],
   HEALTHCARE_PROFESSIONAL: [
     { label: 'Overview', to: '/doctor/dashboard', Icon: LayoutDashboard },
+    { label: 'Follow-ups', to: '/doctor/follow-ups', Icon: ClipboardCheck },
     { label: 'Patients', to: '/doctor/patients', Icon: Users },
     { label: 'AI analytics', to: '/doctor/analytics', Icon: BrainCircuit },
     { label: 'Alerts', to: '/doctor/alerts', Icon: Bell },
@@ -106,16 +109,25 @@ export function Shell({ user, children }: { user: User; children: ReactNode }) {
   const patient = user.role === 'PATIENT'
 
   return <div className="shell">
+    <a className="skip-workspace" href="#workspace-content">Skip to main content</a>
     <button ref={triggerRef} className="mobile-menu" onClick={() => setOpen(true)} aria-label="Open navigation" aria-expanded={open}><Menu /></button>
     {open && <button className="nav-scrim" aria-label="Close navigation" onClick={closeNavigation} />}
     <aside className={open ? 'open' : ''} aria-label="Primary sidebar">
       <button ref={closeRef} className="close" onClick={closeNavigation} aria-label="Close navigation"><X /></button>
+      <div className="sidebar-current" aria-hidden="true">
+        {[0, 1, 2].map(layer => <svg key={layer} className={`sidebar-wave sidebar-wave-${layer}`} viewBox="0 0 248 640" preserveAspectRatio="none" focusable="false">
+          <path d={Array.from({ length: 8 }, (_, index) => {
+            const y = index * 80
+            return `C 145 ${y + 18}, 145 ${y + 24}, 174 ${y + 40} S 203 ${y + 64}, 174 ${y + 80}`
+          }).join(' ').replace(/^/, 'M 174 0 ')} />
+        </svg>)}
+      </div>
       <Brand />
       <span className="nav-label">{patient ? 'My monitoring' : 'Clinical workspace'}</span>
       <nav aria-label={patient ? 'Patient workspace' : 'Professional workspace'}>{items.map(({ label, to, Icon }) => <NavLink key={label} to={to} end={label === 'Overview'} onClick={() => setOpen(false)}><span className="active-rail" /><span className="nav-icon"><Icon aria-hidden="true" /></span><span>{label}</span></NavLink>)}</nav>
       <div className="profile"><span>{user.full_name.slice(0, 2).toUpperCase()}</span><div><strong>{user.full_name}</strong><small><UserRound />{patient ? 'Patient' : 'Healthcare professional'}</small></div></div>
       <button className="signout" onClick={() => { auth.logout(); navigate('/login', { replace: true }) }}><LogOut />Sign out</button>
     </aside>
-    <main><header className="topbar"><div><span className="workspace-state"><i aria-hidden="true" />Monitoring workspace</span></div><div className="topbar-user"><span>{user.full_name}</span><small>{patient ? 'Patient' : 'Healthcare professional'}</small></div></header>{children}</main>
+    <main id="workspace-content" tabIndex={-1}><header className="topbar"><div><span className="workspace-state"><i aria-hidden="true" />Monitoring workspace</span></div><div className="topbar-user"><span>{user.full_name}</span><small>{patient ? 'Patient' : 'Healthcare professional'}</small></div></header>{children}</main>
   </div>
 }

@@ -24,7 +24,7 @@ class Observation:
 
 
 def summarize(observations: Iterable[Observation]) -> np.ndarray:
-    """Create fixed-order 48-hour summaries without fabricating missing measurements."""
+    """Create fixed-order 12-hour summaries without fabricating missing measurements."""
     grouped: dict[str, list[Observation]] = {name: [] for name in SUPPORTED_PARAMETERS}
     for observation in observations:
         if observation.parameter in grouped and np.isfinite(observation.value):

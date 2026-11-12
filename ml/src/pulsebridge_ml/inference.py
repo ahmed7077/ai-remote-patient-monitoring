@@ -9,7 +9,7 @@ from typing import Any
 import joblib
 import numpy as np
 
-from pulsebridge_ml import MODEL_VERSION
+from pulsebridge_ml import INPUT_WINDOW_HOURS, MODEL_VERSION
 from pulsebridge_ml.features import FEATURE_NAMES
 
 
@@ -38,6 +38,8 @@ class TrustedModel:
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if metadata.get("model_version") != MODEL_VERSION:
             raise ArtifactError("Model metadata version does not match the application")
+        if metadata.get("input_window_hours") != INPUT_WINDOW_HOURS:
+            raise ArtifactError("Model input window does not match the application")
         if metadata.get("artifact_sha256") != file_sha256(artifact_path):
             raise ArtifactError("Model artifact checksum does not match trusted metadata")
         payload: dict[str, Any] = joblib.load(artifact_path)
@@ -45,6 +47,8 @@ class TrustedModel:
             raise ArtifactError("Serialized model version does not match the application")
         if tuple(payload.get("feature_names", ())) != FEATURE_NAMES:
             raise ArtifactError("Serialized feature schema does not match the application")
+        if payload.get("input_window_hours") != INPUT_WINDOW_HOURS:
+            raise ArtifactError("Serialized input window does not match the application")
         self.pipeline = payload["pipeline"]
         self.threshold = float(payload["threshold"])
 

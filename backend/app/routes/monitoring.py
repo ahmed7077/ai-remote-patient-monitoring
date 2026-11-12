@@ -47,6 +47,7 @@ from app.services.demo import DemoSimulationService
 from app.services.ingestion import VitalIngestionService
 from app.services.ml_risk import (
     ASSESSMENT_METHOD,
+    INPUT_WINDOW_HOURS,
     MODEL_IDENTIFIER,
     MODEL_VERSION,
     SUPPORTED_PARAMETERS,
@@ -101,6 +102,20 @@ def assign_patient(
             )
         )
     record_audit(db, "ASSIGN_PATIENT", "PATIENT", user.id, str(patient_id))
+    db.commit()
+
+
+@router.delete("/patients/{patient_id}/assignment", status_code=status.HTTP_204_NO_CONTENT)
+def remove_patient_assignment(
+    patient_id: uuid.UUID,
+    user: User = Depends(require_role(Role.HEALTHCARE_PROFESSIONAL)),
+    db: Session = Depends(get_db),
+) -> None:
+    assignment = db.get(ProfessionalPatientAssignment, (user.id, patient_id))
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assigned patient not found")
+    db.delete(assignment)
+    record_audit(db, "REMOVE_PATIENT_ASSIGNMENT", "PATIENT", user.id, str(patient_id))
     db.commit()
 
 
@@ -298,7 +313,7 @@ def prediction_response(
         prediction_id=prediction.id if prediction else None,
         patient_id=patient_id,
         model_identifier=MODEL_IDENTIFIER,
-        model_version=MODEL_VERSION,
+        model_version=prediction.model_version if prediction else MODEL_VERSION,
         assessment_method=ASSESSMENT_METHOD,
         predicted_label=prediction.predicted_label if prediction else None,
         probability=prediction.probability if prediction else None,
@@ -306,7 +321,11 @@ def prediction_response(
             prediction.decision_threshold if prediction else get_ml_risk_service().threshold
         ),
         supported_parameters=list(SUPPORTED_PARAMETERS),
-        input_window_hours=48,
+        input_window_hours=(
+            48
+            if prediction and prediction.model_version == "icu-mortality-hr-temp-v1"
+            else INPUT_WINDOW_HOURS
+        ),
         source_data=prediction.source_data if prediction else None,
         explanation=explanation,
         limitations=limitations,
