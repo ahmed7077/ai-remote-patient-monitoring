@@ -144,7 +144,3 @@ Use fictional review text for hosted demos. Only **Review observations** is sent
 ```powershell
 docker compose up -d --no-deps --no-build --force-recreate backend
 ```
-
-### Interface
-
-The earthy PulseBridge palette pairs emerald and lake blue with sage and stone. Sign-in and registration use horizontal flowing waves; the workspace navigation uses vertical waves. Both respect the device's reduced-motion setting. Dashboard cards show mini trends, alerts retain generation timestamps, and clinician notes and published care summaries are kept separate.
