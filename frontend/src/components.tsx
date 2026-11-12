@@ -1,3 +1,4 @@
+import brandMark from './pulsebridge-mark.svg'
 import { ClipboardCheck, FileText } from 'lucide-react'
 import {
   Activity, AlertOctagon, AlertTriangle, Bell, BrainCircuit, CheckCircle2, FlaskConical,
@@ -29,7 +30,7 @@ const statusMap: Record<StatusKind, { label: string; tone: string; Icon: LucideI
 }
 
 export function Brand() {
-  return <div className="brand"><span className="brand-mark"><Activity /></span><span>PulseBridge<small>Remote monitoring</small></span></div>
+  return <div className="brand"><img className="brand-mark" src={brandMark} width={36} height={36} alt="" /><span>PulseBridge<small>Remote monitoring</small></span></div>
 }
 
 export function StatusBadge({ status, level, label }: { status?: StatusKind; level?: RiskLevel; label?: string }) {

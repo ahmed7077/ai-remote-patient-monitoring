@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">
+  <defs>
+    <linearGradient id="emerald" x2="1" y2="1">
+      <stop stop-color="#13866b"/>
+      <stop offset="1" stop-color="#075540"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#emerald)" d="M12 0h12a12 12 0 0 1 12 12v20a4 4 0 0 1-4 4H12A12 12 0 0 1 0 24V12A12 12 0 0 1 12 0Z"/>
+  <path transform="translate(8 8) scale(.833333)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>
+</svg>
